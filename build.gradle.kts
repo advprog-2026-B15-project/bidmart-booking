@@ -1,7 +1,11 @@
+import org.gradle.api.plugins.quality.Checkstyle
+
 plugins {
 	java
+	checkstyle
 	id("org.springframework.boot") version "3.5.11"
 	id("io.spring.dependency-management") version "1.1.7"
+	id("org.sonarqube") version "6.3.1.5724"
 }
 
 group = "com.example"
@@ -39,4 +43,34 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+}
+
+checkstyle {
+	toolVersion = "10.18.2"
+	configFile = file("config/checkstyle/checkstyle.xml")
+	isIgnoreFailures = false
+}
+
+tasks.withType<Checkstyle> {
+	reports {
+		xml.required.set(true)
+		html.required.set(true)
+	}
+}
+
+sonar {
+	properties {
+		val sonarProjectKey =
+			System.getenv("SONAR_PROJECT_KEY") ?: findProperty("sonarProjectKey")?.toString()
+		val sonarOrganization =
+			System.getenv("SONAR_ORGANIZATION") ?: findProperty("sonarOrganization")?.toString()
+
+		if (!sonarProjectKey.isNullOrBlank()) {
+			property("sonar.projectKey", sonarProjectKey)
+		}
+		if (!sonarOrganization.isNullOrBlank()) {
+			property("sonar.organization", sonarOrganization)
+		}
+		property("sonar.host.url", "https://sonarcloud.io")
+	}
 }
