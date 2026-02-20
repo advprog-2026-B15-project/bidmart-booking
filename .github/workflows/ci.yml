@@ -37,8 +37,9 @@ jobs:
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
         run: |
-          if [ -z "$SONAR_TOKEN" ] || [ -z "$SONAR_PROJECT_KEY" ] || [ -z "$SONAR_ORGANIZATION" ]; then
-            echo "Skipping SonarCloud scan: required secrets are missing."
+          if [ -z "${SONAR_TOKEN:-}" ] || [ -z "${SONAR_PROJECT_KEY:-}" ] || [ -z "${SONAR_ORGANIZATION:-}" ]; then
+            echo "Skipping SonarCloud scan because required secrets are not configured."
             exit 0
           fi
-          ./gradlew sonar
+
+          ./gradlew sonar -Dsonar.token="$SONAR_TOKEN"
