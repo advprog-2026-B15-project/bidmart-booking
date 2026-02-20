@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: bidmart-booking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bidmart_booking
+      POSTGRES_USER: bidmart_booking
+      POSTGRES_PASSWORD: b15-adpro
+    ports:
+      - "5433:5432"
+    volumes:
+      - bidmart_booking_pgdata:/var/lib/postgresql/data
+
+volumes:
+  bidmart_booking_pgdata:
