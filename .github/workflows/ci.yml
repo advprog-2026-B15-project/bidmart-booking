@@ -34,9 +34,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_CI_ENABLED: ${{ vars.SONAR_CI_ENABLED }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
         run: |
+          if [ "${SONAR_CI_ENABLED:-false}" != "true" ]; then
+            echo "Skipping SonarCloud scan because SONAR_CI_ENABLED is not true."
+            exit 0
+          fi
+
           if [ -z "${SONAR_TOKEN:-}" ]; then
             echo "Skipping SonarCloud scan because SONAR_TOKEN is not configured."
             exit 0
