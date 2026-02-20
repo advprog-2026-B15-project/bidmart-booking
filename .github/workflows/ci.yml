@@ -34,17 +34,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY || secrets.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION || secrets.SONAR_ORGANIZATION }}
         run: |
           if [ -z "${SONAR_TOKEN:-}" ]; then
             echo "Skipping SonarCloud scan because SONAR_TOKEN is not configured."
             exit 0
           fi
-          
 
-          # Fallback defaults from GitHub repo metadata.
-          EFFECTIVE_ORGANIZATION="${SONAR_ORGANIZATION:-${GITHUB_REPOSITORY_OWNER}}"
+          if [ -z "${SONAR_ORGANIZATION:-}" ]; then
+            echo "Skipping SonarCloud scan because SONAR_ORGANIZATION is not configured."
+            exit 0
+          fi
+
+          # Default project key from GitHub repo metadata if not explicitly set.
+          EFFECTIVE_ORGANIZATION="$(echo "${SONAR_ORGANIZATION}" | tr '[:upper:]' '[:lower:]')"
           EFFECTIVE_PROJECT_KEY="${SONAR_PROJECT_KEY:-${GITHUB_REPOSITORY//\//_}}"
 
           ./gradlew sonar \
