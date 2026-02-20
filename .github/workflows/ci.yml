@@ -41,6 +41,7 @@ jobs:
             echo "Skipping SonarCloud scan because SONAR_TOKEN is not configured."
             exit 0
           fi
+          
 
           # Fallback defaults from GitHub repo metadata.
           EFFECTIVE_ORGANIZATION="${SONAR_ORGANIZATION:-${GITHUB_REPOSITORY_OWNER}}"
