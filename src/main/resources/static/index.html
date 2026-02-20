@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bidmart Booking</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="layout">
+    <section class="panel create-panel">
+        <h1>Bidmart Booking</h1>
+        <p class="subtitle">Simple item ordering</p>
+
+        <form id="order-form">
+            <label for="item-name">Item Name</label>
+            <input id="item-name" name="itemName" type="text" maxlength="150" required>
+
+            <label for="quantity">Quantity</label>
+            <input id="quantity" name="quantity" type="number" min="1" required>
+
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" maxlength="500" rows="3"></textarea>
+
+            <button type="submit">Create Order</button>
+        </form>
+
+        <p id="form-message" class="form-message"></p>
+    </section>
+
+    <section class="panel list-panel">
+        <div class="list-header">
+            <h2>Orders</h2>
+            <button id="refresh-button" type="button">Refresh</button>
+        </div>
+        <div id="orders-container" class="orders-container"></div>
+    </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
