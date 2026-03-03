@@ -17,7 +17,6 @@ Dokumen ini mendefinisikan format event dari modul Auction ke modul Booking/Noti
 | `eventVersion` | `integer` | Yes | `1` | Versi kontrak event |
 | `occurredAt` | `string` (ISO-8601 UTC) | Yes | `2026-03-04T09:20:00Z` | Waktu event terjadi |
 | `source` | `string` | Yes | `bidmart-auction` | Service pengirim |
-| `correlationId` | `string` (UUID) | No | `corr-7a2...` | Untuk tracing antar event |
 | `payload` | `object` | Yes | `{...}` | Isi bisnis event |
 
 Contoh envelope:
@@ -28,7 +27,6 @@ Contoh envelope:
   "eventVersion": 1,
   "occurredAt": "2026-03-04T09:20:00Z",
   "source": "bidmart-auction",
-  "correlationId": "corr-a12c0f0a-63ec-4d41-b0e8-96f346f66c76",
   "payload": {}
 }
 ```
