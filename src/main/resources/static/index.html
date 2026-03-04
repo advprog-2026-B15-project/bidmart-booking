@@ -3,84 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bidmart Booking MVP Demo</title>
+    <title>Bidmart Booking Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<main class="page">
-    <header class="hero">
-        <h1>Bidmart Booking Integration Demo</h1>
-        <p>Simple frontend to verify Booking and Notification APIs.</p>
+<div class="aurora aurora-a"></div>
+<div class="aurora aurora-b"></div>
+
+<main class="app-shell">
+    <header class="app-header glass">
+        <div>
+            <p class="eyebrow">Bidmart Booking</p>
+            <h1>Operations Console</h1>
+            <p class="subtitle">MVP integration playground for booking and notification flow.</p>
+        </div>
+
+        <div class="header-controls">
+            <label for="user-id">Active User</label>
+            <select id="user-id">
+                <option value="usr-buyer-01">usr-buyer-01</option>
+                <option value="usr-buyer-02">usr-buyer-02</option>
+                <option value="usr-buyer-03">usr-buyer-03</option>
+            </select>
+            <button id="refresh-all" type="button">Refresh Data</button>
+            <p id="sync-status" class="sync-status">Ready</p>
+        </div>
     </header>
 
-    <section class="card">
-        <h2>Active User</h2>
-        <label for="user-id">X-User-Id</label>
-        <select id="user-id">
-            <option value="usr-buyer-01">usr-buyer-01</option>
-            <option value="usr-buyer-02">usr-buyer-02</option>
-            <option value="usr-buyer-03">usr-buyer-03</option>
-        </select>
-        <p class="note">
-            Endpoints /me use selected user in header <code>X-User-Id</code>.
-        </p>
+    <section class="metrics">
+        <article class="metric-card glass">
+            <p>Total Bookings</p>
+            <h3 id="metric-bookings">0</h3>
+        </article>
+        <article class="metric-card glass">
+            <p>Unread Notifications</p>
+            <h3 id="metric-unread">0</h3>
+        </article>
+        <article class="metric-card glass">
+            <p>Total Value (IDR)</p>
+            <h3 id="metric-value">0</h3>
+        </article>
     </section>
 
-    <section class="card">
-        <h2>Dummy Data Notes</h2>
-        <ul>
-            <li>Seed event #1 winner: <code>usr-buyer-01</code> auction <code>auc-seed-001</code></li>
-            <li>Seed event #2 winner: <code>usr-buyer-02</code> auction <code>auc-seed-002</code></li>
-            <li>Loser users get <code>LOSE</code> notifications automatically.</li>
-        </ul>
-    </section>
-
-    <section class="card">
-        <h2>Trigger WinnerDetermined Event (Dev)</h2>
-        <form id="event-form">
-            <div class="grid">
-                <label>auctionId <input id="auction-id" value="auc-ui-001" required></label>
-                <label>listingId <input id="listing-id" value="lst-ui-001" required></label>
-                <label>sellerUserId <input id="seller-user-id" value="usr-seller-90" required></label>
-                <label>winnerUserId <input id="winner-user-id" value="usr-buyer-01" required></label>
-                <label>finalPrice <input id="final-price" type="number" value="1200000" min="0" required></label>
-                <label>currency <input id="currency" value="IDR"></label>
-                <label>itemName <input id="item-name" value="Gaming Headset" required></label>
-                <label>quantity <input id="quantity" type="number" value="1" min="1" required></label>
-                <label class="full">loserUserIds (comma separated)
-                    <input id="losers" value="usr-buyer-02,usr-buyer-03">
-                </label>
+    <section class="workspace">
+        <article class="panel glass">
+            <div class="panel-head">
+                <h2>My Bookings</h2>
+                <button id="load-bookings" type="button">Reload</button>
             </div>
-            <button type="submit">Simulate WinnerDetermined</button>
-        </form>
+            <div id="bookings-list" class="booking-list"></div>
+        </article>
+
+        <article class="panel glass">
+            <div class="panel-head">
+                <h2>Booking Detail</h2>
+            </div>
+
+            <div id="booking-empty" class="empty-state">
+                Select a booking to inspect items and shipment.
+            </div>
+
+            <div id="booking-detail" class="detail" hidden>
+                <div class="detail-grid">
+                    <div><span>Booking ID</span><strong id="detail-id">-</strong></div>
+                    <div><span>Status</span><strong id="detail-status">-</strong></div>
+                    <div><span>Auction</span><strong id="detail-auction">-</strong></div>
+                    <div><span>Listing</span><strong id="detail-listing">-</strong></div>
+                    <div><span>Buyer</span><strong id="detail-buyer">-</strong></div>
+                    <div><span>Seller</span><strong id="detail-seller">-</strong></div>
+                    <div><span>Total</span><strong id="detail-total">-</strong></div>
+                    <div><span>Created</span><strong id="detail-created">-</strong></div>
+                </div>
+
+                <h3>Items</h3>
+                <div id="detail-items" class="inline-list"></div>
+
+                <h3>Shipment</h3>
+                <div id="detail-shipment" class="shipment-box">No shipment data</div>
+            </div>
+        </article>
     </section>
 
-    <section class="card">
-        <h2>Bookings</h2>
-        <div class="actions">
-            <button id="load-bookings">Load /api/bookings/me</button>
+    <section class="workspace workspace-bottom">
+        <article class="panel glass">
+            <div class="panel-head">
+                <h2>Notifications</h2>
+                <button id="load-notifications" type="button">Reload</button>
+            </div>
+            <div id="notifications-list" class="notification-list"></div>
+        </article>
+
+        <article class="panel glass">
+            <div class="panel-head">
+                <h2>Simulate Winner Event</h2>
+                <button id="fill-random" type="button">Fill Random</button>
+            </div>
+
+            <form id="event-form" class="event-form">
+                <div class="form-grid">
+                    <label>auctionId
+                        <input id="auction-id" value="auc-ui-001" required>
+                    </label>
+                    <label>listingId
+                        <input id="listing-id" value="lst-ui-001" required>
+                    </label>
+                    <label>sellerUserId
+                        <input id="seller-user-id" value="usr-seller-90" required>
+                    </label>
+                    <label>winnerUserId
+                        <input id="winner-user-id" value="usr-buyer-01" required>
+                    </label>
+                    <label>finalPrice
+                        <input id="final-price" type="number" value="1200000" min="0" required>
+                    </label>
+                    <label>currency
+                        <input id="currency" value="IDR" required>
+                    </label>
+                    <label>itemName
+                        <input id="item-name" value="Gaming Headset" required>
+                    </label>
+                    <label>quantity
+                        <input id="quantity" type="number" value="1" min="1" required>
+                    </label>
+                    <label class="span-2">loserUserIds (comma separated)
+                        <input id="losers" value="usr-buyer-02,usr-buyer-03">
+                    </label>
+                </div>
+
+                <button class="submit-btn" type="submit">Trigger WinnerDetermined</button>
+            </form>
+        </article>
+    </section>
+
+    <section class="panel glass">
+        <div class="panel-head">
+            <h2>API Log</h2>
+            <button id="clear-log" type="button">Clear Log</button>
         </div>
-        <div id="bookings"></div>
-    </section>
-
-    <section class="card">
-        <h2>Booking Detail</h2>
-        <pre id="booking-detail">Select a booking to view detail</pre>
-    </section>
-
-    <section class="card">
-        <h2>Notifications</h2>
-        <div class="actions">
-            <button id="load-notifications">Load /api/notifications/me</button>
-        </div>
-        <div id="notifications"></div>
-    </section>
-
-    <section class="card">
-        <h2>API Log</h2>
         <pre id="api-log">Ready.</pre>
     </section>
 </main>
+
 <script src="/app.js"></script>
 </body>
 </html>
