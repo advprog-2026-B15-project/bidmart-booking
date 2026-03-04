@@ -34,7 +34,9 @@ public class BookingEventConsumer {
                 payload.getSellerUserId(),
                 payload.getWinnerUserId(),
                 payload.getFinalPrice(),
-                currency
+                currency,
+                payload.getItemName(),
+                payload.getQuantity()
         );
 
         List<String> loserUserIds = payload.getLoserUserIds() != null
