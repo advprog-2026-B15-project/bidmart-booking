@@ -1,0 +1,139 @@
+:root {
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --primary: #0f766e;
+    --border: #d1d5db;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(180deg, #f4f7fb 0%, #eef4ff 100%);
+    color: var(--text);
+}
+
+.page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+}
+
+.hero {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.hero h1 {
+    margin: 0 0 8px;
+}
+
+.hero p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.card h2 {
+    margin-top: 0;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+input,
+select,
+button {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+button {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.93;
+}
+
+.actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.grid .full {
+    grid-column: 1 / -1;
+}
+
+.note {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border-bottom: 1px solid var(--border);
+    padding: 8px;
+    text-align: left;
+    font-size: 14px;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #0b1020;
+    color: #c7f9cc;
+    padding: 12px;
+    border-radius: 8px;
+    overflow: auto;
+}
+
+.inline-btn {
+    width: auto;
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+@media (max-width: 680px) {
+    .page {
+        padding: 12px;
+    }
+}

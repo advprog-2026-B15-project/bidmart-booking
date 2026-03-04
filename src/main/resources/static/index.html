@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bidmart Booking MVP Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="page">
+    <header class="hero">
+        <h1>Bidmart Booking Integration Demo</h1>
+        <p>Simple frontend to verify Booking and Notification APIs.</p>
+    </header>
+
+    <section class="card">
+        <h2>Active User</h2>
+        <label for="user-id">X-User-Id</label>
+        <select id="user-id">
+            <option value="usr-buyer-01">usr-buyer-01</option>
+            <option value="usr-buyer-02">usr-buyer-02</option>
+            <option value="usr-buyer-03">usr-buyer-03</option>
+        </select>
+        <p class="note">
+            Endpoints /me use selected user in header <code>X-User-Id</code>.
+        </p>
+    </section>
+
+    <section class="card">
+        <h2>Dummy Data Notes</h2>
+        <ul>
+            <li>Seed event #1 winner: <code>usr-buyer-01</code> auction <code>auc-seed-001</code></li>
+            <li>Seed event #2 winner: <code>usr-buyer-02</code> auction <code>auc-seed-002</code></li>
+            <li>Loser users get <code>LOSE</code> notifications automatically.</li>
+        </ul>
+    </section>
+
+    <section class="card">
+        <h2>Trigger WinnerDetermined Event (Dev)</h2>
+        <form id="event-form">
+            <div class="grid">
+                <label>auctionId <input id="auction-id" value="auc-ui-001" required></label>
+                <label>listingId <input id="listing-id" value="lst-ui-001" required></label>
+                <label>sellerUserId <input id="seller-user-id" value="usr-seller-90" required></label>
+                <label>winnerUserId <input id="winner-user-id" value="usr-buyer-01" required></label>
+                <label>finalPrice <input id="final-price" type="number" value="1200000" min="0" required></label>
+                <label>currency <input id="currency" value="IDR"></label>
+                <label>itemName <input id="item-name" value="Gaming Headset" required></label>
+                <label>quantity <input id="quantity" type="number" value="1" min="1" required></label>
+                <label class="full">loserUserIds (comma separated)
+                    <input id="losers" value="usr-buyer-02,usr-buyer-03">
+                </label>
+            </div>
+            <button type="submit">Simulate WinnerDetermined</button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Bookings</h2>
+        <div class="actions">
+            <button id="load-bookings">Load /api/bookings/me</button>
+        </div>
+        <div id="bookings"></div>
+    </section>
+
+    <section class="card">
+        <h2>Booking Detail</h2>
+        <pre id="booking-detail">Select a booking to view detail</pre>
+    </section>
+
+    <section class="card">
+        <h2>Notifications</h2>
+        <div class="actions">
+            <button id="load-notifications">Load /api/notifications/me</button>
+        </div>
+        <div id="notifications"></div>
+    </section>
+
+    <section class="card">
+        <h2>API Log</h2>
+        <pre id="api-log">Ready.</pre>
+    </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
