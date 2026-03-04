@@ -3,7 +3,6 @@ name: PR staging -> main
 on:
   push:
     branches: [staging]
-  workflow_dispatch: {}
 
 permissions:
   contents: write
@@ -12,33 +11,27 @@ permissions:
 jobs:
   pr-and-automerge:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install GitHub CLI
-        uses: cli/cli@v3
 
       - name: Create PR if not exists
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Cek apakah sudah ada PR staging -> main yang open
           existing=$(gh pr list --head staging --base main --state open --json number -q '.[0].number')
+
           if [ -z "$existing" ]; then
             gh pr create \
               --head staging \
               --base main \
-              --title "chore: promote staging to main" \
-              --body "Auto PR from staging to main."
+              --title "Auto PR: staging → main" \
+              --body "Automated promotion from staging."
           fi
 
-      - name: Enable auto-merge (merge commit)
+      - name: Enable auto merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pr=$(gh pr list --head staging --base main --state open --json number -q '.[0].number')
-          echo "PR #$pr"
-
-          # Aktifkan auto-merge.
-          # Bisa ganti --merge jadi --squash atau --rebase sesuai aturan repo.
           gh pr merge "$pr" --auto --merge
