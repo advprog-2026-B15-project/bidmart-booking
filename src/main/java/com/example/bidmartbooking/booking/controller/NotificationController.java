@@ -6,6 +6,8 @@ import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import jakarta.validation.Valid;
 import java.util.List;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -41,11 +44,10 @@ public class NotificationController {
             @Valid @RequestBody MarkNotificationReadRequest request
     ) {
         if (!Boolean.TRUE.equals(request.getRead())) {
-            return toNotificationResponse(notificationService.getMyNotifications(userId)
-                    .stream()
-                    .filter(n -> n.getId().equals(id))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Notification not found")));
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "read must be true"
+            );
         }
 
         Notification notification = notificationService.markNotificationAsRead(id, userId);
