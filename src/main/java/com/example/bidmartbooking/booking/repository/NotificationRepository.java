@@ -1,0 +1,11 @@
+package com.example.bidmartbooking.booking.repository;
+
+import com.example.bidmartbooking.booking.model.Notification;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface NotificationRepository extends JpaRepository<Notification, Long> {
+    List<Notification> findByUserIdOrderByCreatedAtDesc(String userId);
+    Optional<Notification> findByIdAndUserId(Long id, String userId);
+}
