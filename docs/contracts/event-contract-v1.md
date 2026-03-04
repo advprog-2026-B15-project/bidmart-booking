@@ -50,18 +50,22 @@ Contoh envelope:
 Contoh event:
 ```json
 {
-"eventId": "evt-002",
-"eventType": "AuctionClosed",
-"eventVersion": 1,
-"occurredAt": "2026-03-04T09:20:00Z",
-"source": "bidmart-auction",
-"payload": {
+  "eventId": "evt-001",
+  "eventType": "WinnerDetermined",
+  "eventVersion": 1,
+  "occurredAt": "2026-03-04T09:20:00Z",
+  "source": "bidmart-auction",
+  "payload": {
     "auctionId": "auc-1001",
     "listingId": "lst-5001",
-    "closedAt": "2026-03-04T09:20:00Z",
-    "hasWinner": true,
-    "winnerUserId": "usr-3001"
-    }
+    "sellerUserId": "usr-2001",
+    "winnerUserId": "usr-3001",
+    "finalPrice": 1750000,
+    "currency": "IDR",
+    "itemName": "Mechanical Keyboard",
+    "quantity": 1,
+    "loserUserIds": ["usr-3002", "usr-3003"]
+  }
 }
 ```
 
