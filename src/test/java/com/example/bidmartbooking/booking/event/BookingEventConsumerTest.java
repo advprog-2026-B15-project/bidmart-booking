@@ -221,6 +221,119 @@ class BookingEventConsumerTest {
         assertEquals("winner-1", payload.getWinnerUserId());
     }
 
+    @Test
+    void shouldHandleAuctionClosedWhenNoWinner() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setHasWinner(false);
+        event.getPayload().setWinnerUserId(null);
+
+        bookingEventConsumer.handleAuctionClosed(event);
+    }
+
+    @Test
+    void shouldHandleAuctionClosedWhenWinnerExists() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setHasWinner(true);
+        event.getPayload().setWinnerUserId("winner-1");
+
+        bookingEventConsumer.handleAuctionClosed(event);
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedEventInvalid() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(null)
+        );
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedPayloadNull() {
+        EventEnvelope<AuctionClosedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-auction-null-payload");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedMissingHasWinner() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setHasWinner(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("hasWinner is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedHasWinnerButWinnerIdMissing() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setHasWinner(true);
+        event.getPayload().setWinnerUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("winnerUserId is required when hasWinner=true", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedEventIdBlank() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.setEventId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("eventId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedAuctionIdBlank() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setAuctionId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("auctionId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedListingIdBlank() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setListingId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("listingId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenAuctionClosedWinnerIdNullAndHasWinnerTrue() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        event.getPayload().setHasWinner(true);
+        event.getPayload().setWinnerUserId(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleAuctionClosed(event)
+        );
+        assertEquals("winnerUserId is required when hasWinner=true", exception.getMessage());
+    }
+
     private EventEnvelope<WinnerDeterminedPayload> buildValidEvent() {
         EventEnvelope<WinnerDeterminedPayload> event = new EventEnvelope<>();
         event.setEventId("evt-1");
@@ -235,6 +348,21 @@ class BookingEventConsumerTest {
         payload.setItemName("Item");
         payload.setQuantity(1);
         payload.setLoserUserIds(List.of("loser-1", "loser-2"));
+
+        event.setPayload(payload);
+        return event;
+    }
+
+    private EventEnvelope<AuctionClosedPayload> buildValidAuctionClosedEvent() {
+        EventEnvelope<AuctionClosedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-auction-closed-1");
+
+        AuctionClosedPayload payload = new AuctionClosedPayload();
+        payload.setAuctionId("auc-closed-1");
+        payload.setListingId("lst-closed-1");
+        payload.setClosedAt("2026-03-05T00:00:00Z");
+        payload.setHasWinner(false);
+        payload.setWinnerUserId(null);
 
         event.setPayload(payload);
         return event;
