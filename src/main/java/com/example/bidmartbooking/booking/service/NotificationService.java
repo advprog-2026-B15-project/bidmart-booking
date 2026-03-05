@@ -54,7 +54,9 @@ public class NotificationService {
         winnerNotif.setUserId(winnerUserId);
         winnerNotif.setType(NotificationType.WIN);
         winnerNotif.setTitle("You won the auction");
-        winnerNotif.setMessage("You won auction " + auctionId + " with final price IDR " + finalPrice);
+        winnerNotif.setMessage(
+                "You won auction " + auctionId + " with final price IDR " + finalPrice
+        );
         winnerNotif.setRelatedAuctionId(auctionId);
         notifications.add(winnerNotif);
 
