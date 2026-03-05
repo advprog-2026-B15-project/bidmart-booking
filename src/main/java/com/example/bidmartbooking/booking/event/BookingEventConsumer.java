@@ -34,7 +34,9 @@ public class BookingEventConsumer {
                 payload.getSellerUserId(),
                 payload.getWinnerUserId(),
                 payload.getFinalPrice(),
-                currency
+                currency,
+                payload.getItemName(),
+                payload.getQuantity()
         );
 
         List<String> loserUserIds = payload.getLoserUserIds() != null
@@ -51,6 +53,13 @@ public class BookingEventConsumer {
         return booking;
     }
 
+    public void handleAuctionClosed(EventEnvelope<AuctionClosedPayload> event) {
+        validateAuctionClosedEvent(event);
+        AuctionClosedPayload payload = event.getPayload();
+        if (Boolean.TRUE.equals(payload.getHasWinner())) {
+            requireNonBlank(payload.getWinnerUserId(), "winnerUserId is required when hasWinner=true");
+        }
+    }
 
     private void validateWinnerEvent(EventEnvelope<WinnerDeterminedPayload> event) {
         if (event == null || event.getPayload() == null) {
@@ -67,6 +76,21 @@ public class BookingEventConsumer {
 
         if (payload.getFinalPrice() == null || payload.getFinalPrice() < 0) {
             throw new IllegalArgumentException("finalPrice must be >= 0");
+        }
+    }
+
+    private void validateAuctionClosedEvent(EventEnvelope<AuctionClosedPayload> event) {
+        if (event == null || event.getPayload() == null) {
+            throw new IllegalArgumentException("Invalid event: payload is required");
+        }
+
+        AuctionClosedPayload payload = event.getPayload();
+
+        requireNonBlank(event.getEventId(), "eventId is required");
+        requireNonBlank(payload.getAuctionId(), "auctionId is required");
+        requireNonBlank(payload.getListingId(), "listingId is required");
+        if (payload.getHasWinner() == null) {
+            throw new IllegalArgumentException("hasWinner is required");
         }
     }
 

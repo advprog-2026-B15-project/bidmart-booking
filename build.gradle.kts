@@ -3,6 +3,7 @@ import org.gradle.api.plugins.quality.Checkstyle
 plugins {
 	java
 	checkstyle
+	jacoco
 	id("org.springframework.boot") version "3.5.11"
 	id("io.spring.dependency-management") version "1.1.7"
 	id("org.sonarqube") version "6.3.1.5724"
@@ -46,6 +47,47 @@ dependencies {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	finalizedBy(tasks.jacocoTestReport)
+}
+
+jacoco {
+	toolVersion = "0.8.12"
+}
+
+tasks.jacocoTestReport {
+	dependsOn(tasks.test)
+	classDirectories.setFrom(
+		files(
+			classDirectories.files.map {
+				fileTree(it) {
+					exclude("com/example/bidmartbooking/BidmartBookingApplication.class")
+				}
+			}
+		)
+	)
+	reports {
+		xml.required.set(true)
+		html.required.set(true)
+	}
+}
+
+tasks.jacocoTestCoverageVerification {
+	dependsOn(tasks.test)
+	classDirectories.setFrom(tasks.jacocoTestReport.get().classDirectories)
+	violationRules {
+		rule {
+			limit {
+				counter = "LINE"
+				value = "COVEREDRATIO"
+				minimum = "1.0".toBigDecimal()
+			}
+			limit {
+				counter = "BRANCH"
+				value = "COVEREDRATIO"
+				minimum = "1.0".toBigDecimal()
+			}
+		}
+	}
 }
 
 checkstyle {

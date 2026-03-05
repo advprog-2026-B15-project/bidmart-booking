@@ -64,9 +64,11 @@ public class NotificationController {
         response.setReadAt(notification.getReadAt());
         response.setCreatedAt(notification.getCreatedAt());
         response.setRelatedAuctionId(notification.getRelatedAuctionId());
-        response.setRelatedBookingId(
-                notification.getRelatedBooking() != null ? notification.getRelatedBooking().getId() : null
-        );
+        if (notification.getRelatedBooking() != null) {
+            response.setRelatedBookingId(notification.getRelatedBooking().getId());
+        } else {
+            response.setRelatedBookingId(null);
+        }
         return response;
     }
 }
