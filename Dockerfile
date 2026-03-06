@@ -14,5 +14,5 @@ WORKDIR /app
 
 COPY --from=build /app/build/libs/*SNAPSHOT.jar app.jar
 
-EXPOSE 10000
-ENTRYPOINT ["sh", "-c", "java -jar app.jar --server.port=${PORT:-10000}"]
+EXPOSE 8085
+ENTRYPOINT ["java", "-jar", "app.jar"]
