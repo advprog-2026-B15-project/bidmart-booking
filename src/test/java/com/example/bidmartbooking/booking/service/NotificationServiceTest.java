@@ -22,6 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +45,8 @@ class NotificationServiceTest {
                 notificationRepository,
                 notificationPreferenceRepository
         );
+        lenient().when(notificationPreferenceRepository.findByUserId(anyString()))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -126,6 +131,57 @@ class NotificationServiceTest {
         Notification loser = notifications.get(1);
         assertEquals(NotificationType.LOSE, loser.getType());
         assertEquals("loser-1", loser.getUserId());
+    }
+
+    @Test
+    void shouldSkipUsersWithInAppDisabledForWinLoseNotifications() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        NotificationPreference enabledPreference = new NotificationPreference();
+        enabledPreference.setInAppEnabled(true);
+
+        when(notificationPreferenceRepository.findByUserId("winner-off"))
+                .thenReturn(Optional.of(disabledPreference));
+        when(notificationPreferenceRepository.findByUserId("loser-off"))
+                .thenReturn(Optional.of(disabledPreference));
+        when(notificationPreferenceRepository.findByUserId("loser-on"))
+                .thenReturn(Optional.of(enabledPreference));
+
+        notificationService.createWinLoseNotifications(
+                "winner-off",
+                List.of("loser-off", "loser-on"),
+                "auc-pref-1",
+                910000L
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(1, notifications.size());
+        assertEquals("loser-on", notifications.getFirst().getUserId());
+        assertEquals(NotificationType.LOSE, notifications.getFirst().getType());
+    }
+
+    @Test
+    void shouldNotSaveWinLoseNotificationsWhenAllRecipientsDisableInApp() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("winner-off"))
+                .thenReturn(Optional.of(disabledPreference));
+        when(notificationPreferenceRepository.findByUserId("loser-off"))
+                .thenReturn(Optional.of(disabledPreference));
+
+        notificationService.createWinLoseNotifications(
+                "winner-off",
+                List.of("loser-off"),
+                "auc-pref-2",
+                920000L
+        );
+
+        verify(notificationRepository, never()).saveAll(any());
     }
 
     @Test
@@ -306,6 +362,37 @@ class NotificationServiceTest {
     }
 
     @Test
+    void shouldSkipDisabledSellerAndKeepEnabledOutbidUser() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        NotificationPreference enabledPreference = new NotificationPreference();
+        enabledPreference.setInAppEnabled(true);
+
+        when(notificationPreferenceRepository.findByUserId("seller-off"))
+                .thenReturn(Optional.of(disabledPreference));
+        when(notificationPreferenceRepository.findByUserId("outbid-on"))
+                .thenReturn(Optional.of(enabledPreference));
+
+        notificationService.createBidPlacedNotifications(
+                "seller-off",
+                "bidder-7",
+                "outbid-on",
+                "auc-pref-bid",
+                330000L,
+                "Headset"
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(1, notifications.size());
+        assertEquals("outbid-on", notifications.getFirst().getUserId());
+        assertEquals(NotificationType.OUTBID, notifications.getFirst().getType());
+    }
+
+    @Test
     void shouldCreateBalanceConvertedNotification() {
         Notification notification = new Notification();
         when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
@@ -326,6 +413,23 @@ class NotificationServiceTest {
     }
 
     @Test
+    void shouldSkipBalanceConvertedNotificationWhenInAppDisabled() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("buyer-off"))
+                .thenReturn(Optional.of(disabledPreference));
+
+        notificationService.createBalanceConvertedNotification(
+                "buyer-off",
+                "auc-pay-off",
+                500000L
+        );
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+    }
+
+    @Test
     void shouldCreateBalanceReleasedNotification() {
         Notification notification = new Notification();
         when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
@@ -343,5 +447,22 @@ class NotificationServiceTest {
         assertEquals("seller-1", saved.getUserId());
         assertEquals(NotificationType.BALANCE_RELEASED, saved.getType());
         assertEquals("auc-release", saved.getRelatedAuctionId());
+    }
+
+    @Test
+    void shouldSkipBalanceReleasedNotificationWhenInAppDisabled() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("seller-off"))
+                .thenReturn(Optional.of(disabledPreference));
+
+        notificationService.createBalanceReleasedNotification(
+                "seller-off",
+                "auc-release-off",
+                500000L
+        );
+
+        verify(notificationRepository, never()).save(any(Notification.class));
     }
 }

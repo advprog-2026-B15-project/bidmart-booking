@@ -92,27 +92,27 @@ public class NotificationService {
     ) {
         List<Notification> notifications = new ArrayList<>();
 
-        Notification winnerNotif = new Notification();
-        winnerNotif.setUserId(winnerUserId);
-        winnerNotif.setType(NotificationType.WIN);
-        winnerNotif.setTitle("You won the auction");
-        winnerNotif.setMessage(
-                "You won auction " + auctionId + " with final price IDR " + finalPrice
+        addIfInAppEnabled(
+                notifications,
+                winnerUserId,
+                NotificationType.WIN,
+                "You won the auction",
+                "You won auction " + auctionId + " with final price IDR " + finalPrice,
+                auctionId
         );
-        winnerNotif.setRelatedAuctionId(auctionId);
-        notifications.add(winnerNotif);
 
         for (String loserUserId : loserUserIds) {
-            Notification loserNotif = new Notification();
-            loserNotif.setUserId(loserUserId);
-            loserNotif.setType(NotificationType.LOSE);
-            loserNotif.setTitle("You lost the auction");
-            loserNotif.setMessage("You were outbid in auction " + auctionId);
-            loserNotif.setRelatedAuctionId(auctionId);
-            notifications.add(loserNotif);
+            addIfInAppEnabled(
+                    notifications,
+                    loserUserId,
+                    NotificationType.LOSE,
+                    "You lost the auction",
+                    "You were outbid in auction " + auctionId,
+                    auctionId
+            );
         }
 
-        notificationRepository.saveAll(notifications);
+        saveNotifications(notifications);
     }
 
     @Transactional
@@ -130,31 +130,29 @@ public class NotificationService {
                 ? itemName
                 : "Auction Item";
 
-        Notification sellerNotification = new Notification();
-        sellerNotification.setUserId(sellerUserId);
-        sellerNotification.setType(NotificationType.NEW_BID);
-        sellerNotification.setTitle("New bid placed");
-        sellerNotification.setMessage(
-                "A new bid of IDR " + bidAmount + " was placed for " + safeItemName
+        addIfInAppEnabled(
+                notifications,
+                sellerUserId,
+                NotificationType.NEW_BID,
+                "New bid placed",
+                "A new bid of IDR " + bidAmount + " was placed for " + safeItemName,
+                auctionId
         );
-        sellerNotification.setRelatedAuctionId(auctionId);
-        notifications.add(sellerNotification);
 
         if (previousHighestBidderUserId != null
                 && !previousHighestBidderUserId.isBlank()
                 && !previousHighestBidderUserId.equals(bidderUserId)) {
-            Notification outbidNotification = new Notification();
-            outbidNotification.setUserId(previousHighestBidderUserId);
-            outbidNotification.setType(NotificationType.OUTBID);
-            outbidNotification.setTitle("You have been outbid");
-            outbidNotification.setMessage(
-                    "Another bidder placed IDR " + bidAmount + " for " + safeItemName
+            addIfInAppEnabled(
+                    notifications,
+                    previousHighestBidderUserId,
+                    NotificationType.OUTBID,
+                    "You have been outbid",
+                    "Another bidder placed IDR " + bidAmount + " for " + safeItemName,
+                    auctionId
             );
-            outbidNotification.setRelatedAuctionId(auctionId);
-            notifications.add(outbidNotification);
         }
 
-        notificationRepository.saveAll(notifications);
+        saveNotifications(notifications);
     }
 
     @Transactional
@@ -163,15 +161,13 @@ public class NotificationService {
             String auctionId,
             Long amount
     ) {
-        Notification notification = new Notification();
-        notification.setUserId(userId);
-        notification.setType(NotificationType.PAYMENT_CONFIRMED);
-        notification.setTitle("Payment confirmed");
-        notification.setMessage(
-                "Your payment of IDR " + amount + " has been confirmed"
+        saveNotificationIfInAppEnabled(
+                userId,
+                NotificationType.PAYMENT_CONFIRMED,
+                "Payment confirmed",
+                "Your payment of IDR " + amount + " has been confirmed",
+                auctionId
         );
-        notification.setRelatedAuctionId(auctionId);
-        notificationRepository.save(notification);
     }
 
     @Transactional
@@ -180,14 +176,66 @@ public class NotificationService {
             String auctionId,
             Long amount
     ) {
+        saveNotificationIfInAppEnabled(
+                userId,
+                NotificationType.BALANCE_RELEASED,
+                "Balance released",
+                "Your balance release of IDR " + amount + " has been processed",
+                auctionId
+        );
+    }
+
+    private void addIfInAppEnabled(
+            List<Notification> notifications,
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId
+    ) {
+        if (!isInAppEnabled(userId)) {
+            return;
+        }
+
         Notification notification = new Notification();
         notification.setUserId(userId);
-        notification.setType(NotificationType.BALANCE_RELEASED);
-        notification.setTitle("Balance released");
-        notification.setMessage(
-                "Your balance release of IDR " + amount + " has been processed"
-        );
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setRelatedAuctionId(auctionId);
+        notifications.add(notification);
+    }
+
+    private void saveNotificationIfInAppEnabled(
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId
+    ) {
+        if (!isInAppEnabled(userId)) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
         notification.setRelatedAuctionId(auctionId);
         notificationRepository.save(notification);
+    }
+
+    private boolean isInAppEnabled(String userId) {
+        return notificationPreferenceRepository.findByUserId(userId)
+                .map(NotificationPreference::getInAppEnabled)
+                .orElse(true);
+    }
+
+    private void saveNotifications(List<Notification> notifications) {
+        if (notifications.isEmpty()) {
+            return;
+        }
+        notificationRepository.saveAll(notifications);
     }
 }
