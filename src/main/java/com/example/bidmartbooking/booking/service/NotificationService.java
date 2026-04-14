@@ -39,6 +39,8 @@ public class NotificationService {
                 .orElseGet(() -> {
                     NotificationPreference preference = new NotificationPreference();
                     preference.setUserId(userId);
+                    preference.setEmailEnabled(false);
+                    preference.setInAppEnabled(true);
                     return preference;
                 });
     }

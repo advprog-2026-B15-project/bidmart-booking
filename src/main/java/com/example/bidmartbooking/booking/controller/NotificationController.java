@@ -1,8 +1,11 @@
 package com.example.bidmartbooking.booking.controller;
 
 import com.example.bidmartbooking.booking.dto.MarkNotificationReadRequest;
+import com.example.bidmartbooking.booking.dto.NotificationPreferenceResponse;
 import com.example.bidmartbooking.booking.dto.NotificationResponse;
+import com.example.bidmartbooking.booking.dto.UpdateNotificationPreferenceRequest;
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -37,6 +40,28 @@ public class NotificationController {
                 .toList();
     }
 
+    @GetMapping("/preferences/me")
+    public NotificationPreferenceResponse getMyNotificationPreference(
+            @RequestHeader("X-User-Id") String userId
+    ) {
+        return toNotificationPreferenceResponse(
+                notificationService.getMyNotificationPreference(userId)
+        );
+    }
+
+    @PatchMapping("/preferences/me")
+    public NotificationPreferenceResponse updateMyNotificationPreference(
+            @RequestHeader("X-User-Id") String userId,
+            @RequestBody UpdateNotificationPreferenceRequest request
+    ) {
+        NotificationPreference preference = notificationService.upsertNotificationPreference(
+                userId,
+                request.getEmailEnabled(),
+                request.getInAppEnabled()
+        );
+        return toNotificationPreferenceResponse(preference);
+    }
+
     @PatchMapping("/{id}/read")
     public NotificationResponse markNotificationAsRead(
             @PathVariable Long id,
@@ -69,6 +94,16 @@ public class NotificationController {
         } else {
             response.setRelatedBookingId(null);
         }
+        return response;
+    }
+
+    private NotificationPreferenceResponse toNotificationPreferenceResponse(
+            NotificationPreference preference
+    ) {
+        NotificationPreferenceResponse response = new NotificationPreferenceResponse();
+        response.setUserId(preference.getUserId());
+        response.setEmailEnabled(preference.getEmailEnabled());
+        response.setInAppEnabled(preference.getInAppEnabled());
         return response;
     }
 }
