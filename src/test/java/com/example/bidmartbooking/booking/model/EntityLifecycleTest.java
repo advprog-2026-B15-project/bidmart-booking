@@ -167,4 +167,13 @@ class EntityLifecycleTest {
         assertEquals(false, BookingStatus.DELIVERED.canTransitionTo(BookingStatus.PAID));
         assertEquals(false, BookingStatus.COMPLETED.canTransitionTo(BookingStatus.CREATED));
     }
+
+    @Test
+    void shipmentStatusShouldAllowOnlySequentialTransitions() {
+        assertTrue(ShipmentStatus.PENDING.canTransitionTo(ShipmentStatus.SHIPPED));
+        assertTrue(ShipmentStatus.SHIPPED.canTransitionTo(ShipmentStatus.DELIVERED));
+        assertEquals(false, ShipmentStatus.PENDING.canTransitionTo(ShipmentStatus.DELIVERED));
+        assertEquals(false, ShipmentStatus.SHIPPED.canTransitionTo(ShipmentStatus.PENDING));
+        assertEquals(false, ShipmentStatus.DELIVERED.canTransitionTo(ShipmentStatus.PENDING));
+    }
 }

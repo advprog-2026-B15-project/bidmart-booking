@@ -99,6 +99,54 @@ public class BookingService {
         return bookingRepository.save(booking);
     }
 
+    @Transactional
+    public Shipment updateShipmentForSeller(
+            Long bookingId,
+            String sellerUserId,
+            ShipmentStatus nextStatus,
+            String trackingNumber,
+            String courierName
+    ) {
+        Booking booking = bookingRepository.findByIdAndSellerUserId(bookingId, sellerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        Shipment shipment = shipmentRepository.findByBookingId(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Shipment not found"
+                ));
+
+        ShipmentStatus currentStatus = shipment.getStatus();
+        if (currentStatus == null || !currentStatus.canTransitionTo(nextStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid shipment status transition"
+            );
+        }
+
+        shipment.setStatus(nextStatus);
+        if (trackingNumber != null && !trackingNumber.isBlank()) {
+            shipment.setTrackingNumber(trackingNumber);
+        }
+        if (courierName != null && !courierName.isBlank()) {
+            shipment.setCourierName(courierName);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (nextStatus == ShipmentStatus.SHIPPED && shipment.getShippedAt() == null) {
+            shipment.setShippedAt(now);
+            booking.setStatus(BookingStatus.SHIPPED);
+        }
+        if (nextStatus == ShipmentStatus.DELIVERED && shipment.getDeliveredAt() == null) {
+            shipment.setDeliveredAt(now);
+            booking.setStatus(BookingStatus.DELIVERED);
+        }
+
+        bookingRepository.save(booking);
+        return shipmentRepository.save(shipment);
+    }
+
     private void applyLifecycleTimestamps(Booking booking, BookingStatus nextStatus) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (nextStatus == BookingStatus.PAID && booking.getPaidAt() == null) {

@@ -309,4 +309,257 @@ class BookingServiceTest {
         assertEquals(BookingStatus.COMPLETED, result.getStatus());
         assertEquals(completedAt, result.getCompletedAt());
     }
+
+    @Test
+    void shouldUpdateShipmentToShippedForSeller() {
+        Booking booking = new Booking();
+        booking.setId(600L);
+        booking.setSellerUserId("seller-600");
+        booking.setStatus(BookingStatus.PAID);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.PENDING);
+
+        when(bookingRepository.findByIdAndSellerUserId(600L, "seller-600"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(600L)).thenReturn(Optional.of(shipment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment result = bookingService.updateShipmentForSeller(
+                600L,
+                "seller-600",
+                ShipmentStatus.SHIPPED,
+                "JNE-123",
+                "JNE"
+        );
+
+        assertEquals(ShipmentStatus.SHIPPED, result.getStatus());
+        assertEquals("JNE-123", result.getTrackingNumber());
+        assertEquals("JNE", result.getCourierName());
+        assertNotNull(result.getShippedAt());
+        assertEquals(BookingStatus.SHIPPED, booking.getStatus());
+    }
+
+    @Test
+    void shouldUpdateShipmentToDeliveredForSeller() {
+        Booking booking = new Booking();
+        booking.setId(601L);
+        booking.setSellerUserId("seller-601");
+        booking.setStatus(BookingStatus.SHIPPED);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.SHIPPED);
+
+        when(bookingRepository.findByIdAndSellerUserId(601L, "seller-601"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(601L)).thenReturn(Optional.of(shipment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment result = bookingService.updateShipmentForSeller(
+                601L,
+                "seller-601",
+                ShipmentStatus.DELIVERED,
+                null,
+                null
+        );
+
+        assertEquals(ShipmentStatus.DELIVERED, result.getStatus());
+        assertNotNull(result.getDeliveredAt());
+        assertEquals(BookingStatus.DELIVERED, booking.getStatus());
+    }
+
+    @Test
+    void shouldRejectInvalidShipmentTransition() {
+        Booking booking = new Booking();
+        booking.setId(602L);
+        booking.setSellerUserId("seller-602");
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.PENDING);
+
+        when(bookingRepository.findByIdAndSellerUserId(602L, "seller-602"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(602L)).thenReturn(Optional.of(shipment));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.updateShipmentForSeller(
+                        602L,
+                        "seller-602",
+                        ShipmentStatus.DELIVERED,
+                        null,
+                        null
+                )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowWhenSellerDoesNotOwnBookingForShipmentUpdate() {
+        when(bookingRepository.findByIdAndSellerUserId(603L, "seller-603"))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.updateShipmentForSeller(
+                        603L,
+                        "seller-603",
+                        ShipmentStatus.SHIPPED,
+                        "RESI",
+                        "JNE"
+                )
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowWhenShipmentNotFoundForSellerUpdate() {
+        Booking booking = new Booking();
+        booking.setId(604L);
+        booking.setSellerUserId("seller-604");
+
+        when(bookingRepository.findByIdAndSellerUserId(604L, "seller-604"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(604L)).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.updateShipmentForSeller(
+                        604L,
+                        "seller-604",
+                        ShipmentStatus.SHIPPED,
+                        "RESI",
+                        "JNE"
+                )
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldKeepExistingShipmentTrackingMetadataWhenBlank() {
+        Booking booking = new Booking();
+        booking.setId(605L);
+        booking.setSellerUserId("seller-605");
+        booking.setStatus(BookingStatus.PAID);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.PENDING);
+        shipment.setTrackingNumber("OLD-TRACK");
+        shipment.setCourierName("OLD-COURIER");
+
+        when(bookingRepository.findByIdAndSellerUserId(605L, "seller-605"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(605L)).thenReturn(Optional.of(shipment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment result = bookingService.updateShipmentForSeller(
+                605L,
+                "seller-605",
+                ShipmentStatus.SHIPPED,
+                " ",
+                ""
+        );
+
+        assertEquals("OLD-TRACK", result.getTrackingNumber());
+        assertEquals("OLD-COURIER", result.getCourierName());
+    }
+
+    @Test
+    void shouldRejectShipmentUpdateWhenCurrentStatusIsNull() {
+        Booking booking = new Booking();
+        booking.setId(606L);
+        booking.setSellerUserId("seller-606");
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+
+        when(bookingRepository.findByIdAndSellerUserId(606L, "seller-606"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(606L)).thenReturn(Optional.of(shipment));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.updateShipmentForSeller(
+                        606L,
+                        "seller-606",
+                        ShipmentStatus.SHIPPED,
+                        "RESI",
+                        "JNE"
+                )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldKeepExistingShippedAtWhenTransitioningToShipped() {
+        Booking booking = new Booking();
+        OffsetDateTime shippedAt = OffsetDateTime.now().minusHours(2);
+        booking.setId(607L);
+        booking.setSellerUserId("seller-607");
+        booking.setStatus(BookingStatus.PAID);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.PENDING);
+        shipment.setShippedAt(shippedAt);
+
+        when(bookingRepository.findByIdAndSellerUserId(607L, "seller-607"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(607L)).thenReturn(Optional.of(shipment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment result = bookingService.updateShipmentForSeller(
+                607L,
+                "seller-607",
+                ShipmentStatus.SHIPPED,
+                "JNE-607",
+                "JNE"
+        );
+
+        assertEquals(shippedAt, result.getShippedAt());
+        assertEquals(BookingStatus.PAID, booking.getStatus());
+    }
+
+    @Test
+    void shouldKeepExistingDeliveredAtWhenTransitioningToDelivered() {
+        Booking booking = new Booking();
+        OffsetDateTime deliveredAt = OffsetDateTime.now().minusHours(3);
+        booking.setId(608L);
+        booking.setSellerUserId("seller-608");
+        booking.setStatus(BookingStatus.SHIPPED);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.SHIPPED);
+        shipment.setDeliveredAt(deliveredAt);
+
+        when(bookingRepository.findByIdAndSellerUserId(608L, "seller-608"))
+                .thenReturn(Optional.of(booking));
+        when(shipmentRepository.findByBookingId(608L)).thenReturn(Optional.of(shipment));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(shipmentRepository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Shipment result = bookingService.updateShipmentForSeller(
+                608L,
+                "seller-608",
+                ShipmentStatus.DELIVERED,
+                null,
+                null
+        );
+
+        assertEquals(deliveredAt, result.getDeliveredAt());
+        assertEquals(BookingStatus.SHIPPED, booking.getStatus());
+    }
 }
