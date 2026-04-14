@@ -7,6 +7,9 @@ import com.example.bidmartbooking.booking.dto.UpdateNotificationPreferenceReques
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.service.NotificationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 
@@ -22,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/notifications")
+@Tag(name = "Notifications", description = "Notification inbox and preference endpoints")
 public class NotificationController {
 
     private final NotificationService notificationService;
@@ -31,7 +35,9 @@ public class NotificationController {
     }
 
     @GetMapping("/me")
+    @Operation(summary = "List my notifications")
     public List<NotificationResponse> getMyNotifications(
+            @Parameter(description = "Current user id", required = true)
             @RequestHeader("X-User-Id") String userId
     ) {
         return notificationService.getMyNotifications(userId)
@@ -41,7 +47,9 @@ public class NotificationController {
     }
 
     @GetMapping("/preferences/me")
+    @Operation(summary = "Get my notification preferences")
     public NotificationPreferenceResponse getMyNotificationPreference(
+            @Parameter(description = "Current user id", required = true)
             @RequestHeader("X-User-Id") String userId
     ) {
         return toNotificationPreferenceResponse(
@@ -50,7 +58,9 @@ public class NotificationController {
     }
 
     @PatchMapping("/preferences/me")
+    @Operation(summary = "Update my notification preferences")
     public NotificationPreferenceResponse updateMyNotificationPreference(
+            @Parameter(description = "Current user id", required = true)
             @RequestHeader("X-User-Id") String userId,
             @RequestBody UpdateNotificationPreferenceRequest request
     ) {
@@ -63,8 +73,11 @@ public class NotificationController {
     }
 
     @PatchMapping("/{id}/read")
+    @Operation(summary = "Mark a notification as read")
     public NotificationResponse markNotificationAsRead(
+            @Parameter(description = "Notification id", required = true)
             @PathVariable Long id,
+            @Parameter(description = "Current user id", required = true)
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody MarkNotificationReadRequest request
     ) {
