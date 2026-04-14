@@ -75,6 +75,28 @@ public class BookingEventConsumer {
         );
     }
 
+    public void handleBalanceConverted(EventEnvelope<BalanceConvertedPayload> event) {
+        validateBalanceConvertedEvent(event);
+
+        BalanceConvertedPayload payload = event.getPayload();
+        notificationService.createBalanceConvertedNotification(
+                payload.getUserId(),
+                payload.getAuctionId(),
+                payload.getAmount()
+        );
+    }
+
+    public void handleBalanceReleased(EventEnvelope<BalanceReleasedPayload> event) {
+        validateBalanceReleasedEvent(event);
+
+        BalanceReleasedPayload payload = event.getPayload();
+        notificationService.createBalanceReleasedNotification(
+                payload.getUserId(),
+                payload.getAuctionId(),
+                payload.getAmount()
+        );
+    }
+
     private void validateWinnerEvent(EventEnvelope<WinnerDeterminedPayload> event) {
         if (event == null || event.getPayload() == null) {
             throw new IllegalArgumentException("Invalid event: payload is required");
@@ -122,6 +144,34 @@ public class BookingEventConsumer {
         requireNonBlank(payload.getBidderUserId(), "bidderUserId is required");
         if (payload.getBidAmount() == null || payload.getBidAmount() < 0) {
             throw new IllegalArgumentException("bidAmount must be >= 0");
+        }
+    }
+
+    private void validateBalanceConvertedEvent(EventEnvelope<BalanceConvertedPayload> event) {
+        if (event == null || event.getPayload() == null) {
+            throw new IllegalArgumentException("Invalid event: payload is required");
+        }
+
+        BalanceConvertedPayload payload = event.getPayload();
+
+        requireNonBlank(event.getEventId(), "eventId is required");
+        requireNonBlank(payload.getUserId(), "userId is required");
+        if (payload.getAmount() == null || payload.getAmount() < 0) {
+            throw new IllegalArgumentException("amount must be >= 0");
+        }
+    }
+
+    private void validateBalanceReleasedEvent(EventEnvelope<BalanceReleasedPayload> event) {
+        if (event == null || event.getPayload() == null) {
+            throw new IllegalArgumentException("Invalid event: payload is required");
+        }
+
+        BalanceReleasedPayload payload = event.getPayload();
+
+        requireNonBlank(event.getEventId(), "eventId is required");
+        requireNonBlank(payload.getUserId(), "userId is required");
+        if (payload.getAmount() == null || payload.getAmount() < 0) {
+            throw new IllegalArgumentException("amount must be >= 0");
         }
     }
 

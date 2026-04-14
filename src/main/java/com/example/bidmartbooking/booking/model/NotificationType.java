@@ -5,5 +5,7 @@ public enum NotificationType {
     LOSE,
     NEW_BID,
     OUTBID,
+    PAYMENT_CONFIRMED,
+    BALANCE_RELEASED,
     INFO
 }

@@ -304,4 +304,44 @@ class NotificationServiceTest {
         assertEquals("A new bid of IDR 450000 was placed for Auction Item",
                 notifications.getFirst().getMessage());
     }
+
+    @Test
+    void shouldCreateBalanceConvertedNotification() {
+        Notification notification = new Notification();
+        when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
+
+        notificationService.createBalanceConvertedNotification(
+                "buyer-1",
+                "auc-pay",
+                500000L
+        );
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+
+        assertEquals("buyer-1", saved.getUserId());
+        assertEquals(NotificationType.PAYMENT_CONFIRMED, saved.getType());
+        assertEquals("auc-pay", saved.getRelatedAuctionId());
+    }
+
+    @Test
+    void shouldCreateBalanceReleasedNotification() {
+        Notification notification = new Notification();
+        when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
+
+        notificationService.createBalanceReleasedNotification(
+                "seller-1",
+                "auc-release",
+                500000L
+        );
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+
+        assertEquals("seller-1", saved.getUserId());
+        assertEquals(NotificationType.BALANCE_RELEASED, saved.getType());
+        assertEquals("auc-release", saved.getRelatedAuctionId());
+    }
 }

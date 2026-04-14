@@ -156,4 +156,38 @@ public class NotificationService {
 
         notificationRepository.saveAll(notifications);
     }
+
+    @Transactional
+    public void createBalanceConvertedNotification(
+            String userId,
+            String auctionId,
+            Long amount
+    ) {
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(NotificationType.PAYMENT_CONFIRMED);
+        notification.setTitle("Payment confirmed");
+        notification.setMessage(
+                "Your payment of IDR " + amount + " has been confirmed"
+        );
+        notification.setRelatedAuctionId(auctionId);
+        notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void createBalanceReleasedNotification(
+            String userId,
+            String auctionId,
+            Long amount
+    ) {
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(NotificationType.BALANCE_RELEASED);
+        notification.setTitle("Balance released");
+        notification.setMessage(
+                "Your balance release of IDR " + amount + " has been processed"
+        );
+        notification.setRelatedAuctionId(auctionId);
+        notificationRepository.save(notification);
+    }
 }
