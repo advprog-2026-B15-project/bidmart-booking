@@ -58,6 +58,12 @@ public class Booking {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Column(name = "paid_at")
+    private OffsetDateTime paidAt;
+
+    @Column(name = "completed_at")
+    private OffsetDateTime completedAt;
+
     @PrePersist
     public void prePersist() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);

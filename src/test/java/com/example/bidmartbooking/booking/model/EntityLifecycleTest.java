@@ -150,7 +150,21 @@ class EntityLifecycleTest {
     @Test
     void enumsShouldContainExpectedValues() {
         assertNotNull(BookingStatus.valueOf("CREATED"));
+        assertNotNull(BookingStatus.valueOf("PAID"));
         assertNotNull(ShipmentStatus.valueOf("PENDING"));
         assertNotNull(NotificationType.valueOf("WIN"));
+    }
+
+    @Test
+    void bookingStatusShouldAllowOnlySequentialTransitions() {
+        assertTrue(BookingStatus.CREATED.canTransitionTo(BookingStatus.PAID));
+        assertTrue(BookingStatus.PAID.canTransitionTo(BookingStatus.SHIPPED));
+        assertTrue(BookingStatus.SHIPPED.canTransitionTo(BookingStatus.DELIVERED));
+        assertTrue(BookingStatus.DELIVERED.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.CREATED.canTransitionTo(BookingStatus.SHIPPED));
+        assertEquals(false, BookingStatus.PAID.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.SHIPPED.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.DELIVERED.canTransitionTo(BookingStatus.PAID));
+        assertEquals(false, BookingStatus.COMPLETED.canTransitionTo(BookingStatus.CREATED));
     }
 }

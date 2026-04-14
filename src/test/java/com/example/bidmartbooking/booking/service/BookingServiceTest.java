@@ -8,6 +8,7 @@ import com.example.bidmartbooking.booking.model.ShipmentStatus;
 import com.example.bidmartbooking.booking.repository.BookingItemRepository;
 import com.example.bidmartbooking.booking.repository.BookingRepository;
 import com.example.bidmartbooking.booking.repository.ShipmentRepository;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -200,5 +201,112 @@ class BookingServiceTest {
 
         assertEquals("Auction Item", item.getItemName());
         assertEquals(1, item.getQuantity());
+    }
+
+    @Test
+    void shouldTransitionBookingStatusFromCreatedToPaid() {
+        Booking booking = new Booking();
+        booking.setId(500L);
+        booking.setStatus(BookingStatus.CREATED);
+
+        when(bookingRepository.findById(500L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.transitionBookingStatus(500L, BookingStatus.PAID);
+
+        assertEquals(BookingStatus.PAID, result.getStatus());
+        assertNotNull(result.getPaidAt());
+    }
+
+    @Test
+    void shouldTransitionBookingStatusFromDeliveredToCompleted() {
+        Booking booking = new Booking();
+        booking.setId(501L);
+        booking.setStatus(BookingStatus.DELIVERED);
+
+        when(bookingRepository.findById(501L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.transitionBookingStatus(501L, BookingStatus.COMPLETED);
+
+        assertEquals(BookingStatus.COMPLETED, result.getStatus());
+        assertNotNull(result.getCompletedAt());
+    }
+
+    @Test
+    void shouldRejectInvalidBookingStatusTransition() {
+        Booking booking = new Booking();
+        booking.setId(502L);
+        booking.setStatus(BookingStatus.CREATED);
+
+        when(bookingRepository.findById(502L)).thenReturn(Optional.of(booking));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.transitionBookingStatus(502L, BookingStatus.SHIPPED)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowWhenTransitionBookingNotFound() {
+        when(bookingRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.transitionBookingStatus(999L, BookingStatus.PAID)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldRejectTransitionWhenCurrentStatusIsNull() {
+        Booking booking = new Booking();
+        booking.setId(503L);
+
+        when(bookingRepository.findById(503L)).thenReturn(Optional.of(booking));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.transitionBookingStatus(503L, BookingStatus.PAID)
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldKeepExistingPaidAtWhenTransitioningToPaid() {
+        Booking booking = new Booking();
+        OffsetDateTime paidAt = OffsetDateTime.now().minusDays(1);
+        booking.setId(504L);
+        booking.setStatus(BookingStatus.CREATED);
+        booking.setPaidAt(paidAt);
+
+        when(bookingRepository.findById(504L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.transitionBookingStatus(504L, BookingStatus.PAID);
+
+        assertEquals(BookingStatus.PAID, result.getStatus());
+        assertEquals(paidAt, result.getPaidAt());
+    }
+
+    @Test
+    void shouldKeepExistingCompletedAtWhenTransitioningToCompleted() {
+        Booking booking = new Booking();
+        OffsetDateTime completedAt = OffsetDateTime.now().minusHours(4);
+        booking.setId(505L);
+        booking.setStatus(BookingStatus.DELIVERED);
+        booking.setCompletedAt(completedAt);
+
+        when(bookingRepository.findById(505L)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.transitionBookingStatus(505L, BookingStatus.COMPLETED);
+
+        assertEquals(BookingStatus.COMPLETED, result.getStatus());
+        assertEquals(completedAt, result.getCompletedAt());
     }
 }
