@@ -1,7 +1,9 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
+import com.example.bidmartbooking.booking.repository.NotificationPreferenceRepository;
 import com.example.bidmartbooking.booking.repository.NotificationRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,14 +18,52 @@ import org.springframework.web.server.ResponseStatusException;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            NotificationPreferenceRepository notificationPreferenceRepository
+    ) {
         this.notificationRepository = notificationRepository;
+        this.notificationPreferenceRepository = notificationPreferenceRepository;
     }
 
     @Transactional(readOnly = true)
     public List<Notification> getMyNotifications(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationPreference getMyNotificationPreference(String userId) {
+        return notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationPreference preference = new NotificationPreference();
+                    preference.setUserId(userId);
+                    return preference;
+                });
+    }
+
+    @Transactional
+    public NotificationPreference upsertNotificationPreference(
+            String userId,
+            Boolean emailEnabled,
+            Boolean inAppEnabled
+    ) {
+        NotificationPreference preference = notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationPreference created = new NotificationPreference();
+                    created.setUserId(userId);
+                    return created;
+                });
+
+        if (emailEnabled != null) {
+            preference.setEmailEnabled(emailEnabled);
+        }
+        if (inAppEnabled != null) {
+            preference.setInAppEnabled(inAppEnabled);
+        }
+
+        return notificationPreferenceRepository.save(preference);
     }
 
     @Transactional

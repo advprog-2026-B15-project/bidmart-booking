@@ -148,6 +148,47 @@ class EntityLifecycleTest {
     }
 
     @Test
+    void notificationPreferencePrePersistShouldSetDefaults() {
+        NotificationPreference preference = new NotificationPreference();
+
+        preference.prePersist();
+
+        assertEquals(false, preference.getEmailEnabled());
+        assertEquals(true, preference.getInAppEnabled());
+        assertNotNull(preference.getCreatedAt());
+        assertNotNull(preference.getUpdatedAt());
+    }
+
+    @Test
+    void notificationPreferencePrePersistShouldKeepExistingValues() {
+        NotificationPreference preference = new NotificationPreference();
+        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusHours(3);
+        OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(15);
+        preference.setEmailEnabled(true);
+        preference.setInAppEnabled(false);
+        preference.setCreatedAt(createdAt);
+        preference.setUpdatedAt(updatedAt);
+
+        preference.prePersist();
+
+        assertEquals(true, preference.getEmailEnabled());
+        assertEquals(false, preference.getInAppEnabled());
+        assertEquals(createdAt, preference.getCreatedAt());
+        assertEquals(updatedAt, preference.getUpdatedAt());
+    }
+
+    @Test
+    void notificationPreferencePreUpdateShouldRefreshUpdatedAt() {
+        NotificationPreference preference = new NotificationPreference();
+        OffsetDateTime old = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(45);
+        preference.setUpdatedAt(old);
+
+        preference.preUpdate();
+
+        assertTrue(preference.getUpdatedAt().isAfter(old));
+    }
+
+    @Test
     void enumsShouldContainExpectedValues() {
         assertNotNull(BookingStatus.valueOf("CREATED"));
         assertNotNull(BookingStatus.valueOf("PAID"));

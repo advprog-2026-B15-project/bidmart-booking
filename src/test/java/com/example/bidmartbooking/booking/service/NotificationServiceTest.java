@@ -1,7 +1,9 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
+import com.example.bidmartbooking.booking.repository.NotificationPreferenceRepository;
 import com.example.bidmartbooking.booking.repository.NotificationRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -29,11 +31,17 @@ class NotificationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private NotificationPreferenceRepository notificationPreferenceRepository;
+
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
-        notificationService = new NotificationService(notificationRepository);
+        notificationService = new NotificationService(
+                notificationRepository,
+                notificationPreferenceRepository
+        );
     }
 
     @Test
@@ -118,5 +126,99 @@ class NotificationServiceTest {
         Notification loser = notifications.get(1);
         assertEquals(NotificationType.LOSE, loser.getType());
         assertEquals("loser-1", loser.getUserId());
+    }
+
+    @Test
+    void shouldReturnStoredNotificationPreference() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId("usr-pref");
+        preference.setEmailEnabled(true);
+        preference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("usr-pref"))
+                .thenReturn(Optional.of(preference));
+
+        NotificationPreference result =
+                notificationService.getMyNotificationPreference("usr-pref");
+
+        assertEquals("usr-pref", result.getUserId());
+        assertEquals(true, result.getEmailEnabled());
+        assertEquals(false, result.getInAppEnabled());
+    }
+
+    @Test
+    void shouldReturnDefaultPreferenceWhenMissing() {
+        when(notificationPreferenceRepository.findByUserId("usr-new"))
+                .thenReturn(Optional.empty());
+
+        NotificationPreference result =
+                notificationService.getMyNotificationPreference("usr-new");
+
+        assertEquals("usr-new", result.getUserId());
+        result.prePersist();
+        assertEquals(false, result.getEmailEnabled());
+        assertEquals(true, result.getInAppEnabled());
+    }
+
+    @Test
+    void shouldCreateNotificationPreferenceWhenMissing() {
+        when(notificationPreferenceRepository.findByUserId("usr-create"))
+                .thenReturn(Optional.empty());
+        when(notificationPreferenceRepository.save(any(NotificationPreference.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationPreference result = notificationService.upsertNotificationPreference(
+                "usr-create",
+                true,
+                false
+        );
+
+        assertEquals("usr-create", result.getUserId());
+        assertEquals(true, result.getEmailEnabled());
+        assertEquals(false, result.getInAppEnabled());
+    }
+
+    @Test
+    void shouldUpdateExistingNotificationPreference() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId("usr-update");
+        preference.setEmailEnabled(false);
+        preference.setInAppEnabled(true);
+
+        when(notificationPreferenceRepository.findByUserId("usr-update"))
+                .thenReturn(Optional.of(preference));
+        when(notificationPreferenceRepository.save(any(NotificationPreference.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationPreference result = notificationService.upsertNotificationPreference(
+                "usr-update",
+                true,
+                null
+        );
+
+        assertEquals(true, result.getEmailEnabled());
+        assertEquals(true, result.getInAppEnabled());
+    }
+
+    @Test
+    void shouldKeepExistingEmailPreferenceWhenEmailFlagIsNull() {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId("usr-keep-email");
+        preference.setEmailEnabled(true);
+        preference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("usr-keep-email"))
+                .thenReturn(Optional.of(preference));
+        when(notificationPreferenceRepository.save(any(NotificationPreference.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        NotificationPreference result = notificationService.upsertNotificationPreference(
+                "usr-keep-email",
+                null,
+                true
+        );
+
+        assertEquals(true, result.getEmailEnabled());
+        assertEquals(true, result.getInAppEnabled());
     }
 }
