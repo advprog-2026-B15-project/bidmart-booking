@@ -562,4 +562,71 @@ class BookingServiceTest {
         assertEquals(deliveredAt, result.getDeliveredAt());
         assertEquals(BookingStatus.SHIPPED, booking.getStatus());
     }
+
+    @Test
+    void shouldConfirmDeliveryForBuyer() {
+        Booking booking = new Booking();
+        booking.setId(700L);
+        booking.setBuyerUserId("buyer-700");
+        booking.setStatus(BookingStatus.DELIVERED);
+
+        when(bookingRepository.findByIdAndBuyerUserId(700L, "buyer-700"))
+                .thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.confirmDeliveryForBuyer(700L, "buyer-700");
+
+        assertEquals(BookingStatus.COMPLETED, result.getStatus());
+        assertNotNull(result.getCompletedAt());
+    }
+
+    @Test
+    void shouldRejectDeliveryConfirmationWhenBookingNotDelivered() {
+        Booking booking = new Booking();
+        booking.setId(701L);
+        booking.setBuyerUserId("buyer-701");
+        booking.setStatus(BookingStatus.SHIPPED);
+
+        when(bookingRepository.findByIdAndBuyerUserId(701L, "buyer-701"))
+                .thenReturn(Optional.of(booking));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmDeliveryForBuyer(701L, "buyer-701")
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldThrowWhenBuyerDoesNotOwnBookingForDeliveryConfirmation() {
+        when(bookingRepository.findByIdAndBuyerUserId(702L, "buyer-702"))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> bookingService.confirmDeliveryForBuyer(702L, "buyer-702")
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+    }
+
+    @Test
+    void shouldKeepExistingCompletedAtWhenBuyerConfirmsDelivery() {
+        Booking booking = new Booking();
+        OffsetDateTime completedAt = OffsetDateTime.now().minusMinutes(30);
+        booking.setId(703L);
+        booking.setBuyerUserId("buyer-703");
+        booking.setStatus(BookingStatus.DELIVERED);
+        booking.setCompletedAt(completedAt);
+
+        when(bookingRepository.findByIdAndBuyerUserId(703L, "buyer-703"))
+                .thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Booking result = bookingService.confirmDeliveryForBuyer(703L, "buyer-703");
+
+        assertEquals(BookingStatus.COMPLETED, result.getStatus());
+        assertEquals(completedAt, result.getCompletedAt());
+    }
 }

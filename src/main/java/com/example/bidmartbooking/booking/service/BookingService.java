@@ -147,6 +147,25 @@ public class BookingService {
         return shipmentRepository.save(shipment);
     }
 
+    @Transactional
+    public Booking confirmDeliveryForBuyer(Long bookingId, String buyerUserId) {
+        Booking booking = bookingRepository.findByIdAndBuyerUserId(bookingId, buyerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        if (booking.getStatus() != BookingStatus.DELIVERED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Booking is not ready for delivery confirmation"
+            );
+        }
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        applyLifecycleTimestamps(booking, BookingStatus.COMPLETED);
+        return bookingRepository.save(booking);
+    }
+
     private void applyLifecycleTimestamps(Booking booking, BookingStatus nextStatus) {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (nextStatus == BookingStatus.PAID && booking.getPaidAt() == null) {
