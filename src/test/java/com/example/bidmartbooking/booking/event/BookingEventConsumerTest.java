@@ -222,6 +222,64 @@ class BookingEventConsumerTest {
     }
 
     @Test
+    void shouldCoverBidPlacedPayloadPojo() {
+        BidPlacedPayload payload = new BidPlacedPayload();
+        payload.setAuctionId("auc-bid");
+        payload.setListingId("lst-bid");
+        payload.setSellerUserId("seller-bid");
+        payload.setBidderUserId("bidder-1");
+        payload.setPreviousHighestBidderUserId("bidder-0");
+        payload.setBidAmount(250000L);
+        payload.setCurrency("IDR");
+        payload.setItemName("Mouse");
+
+        assertEquals("auc-bid", payload.getAuctionId());
+        assertEquals("lst-bid", payload.getListingId());
+        assertEquals("seller-bid", payload.getSellerUserId());
+        assertEquals("bidder-1", payload.getBidderUserId());
+        assertEquals("bidder-0", payload.getPreviousHighestBidderUserId());
+        assertEquals(250000L, payload.getBidAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("Mouse", payload.getItemName());
+    }
+
+    @Test
+    void shouldCoverBalanceConvertedPayloadPojo() {
+        BalanceConvertedPayload payload = new BalanceConvertedPayload();
+        payload.setBookingId("bkg-1");
+        payload.setAuctionId("auc-1");
+        payload.setUserId("buyer-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setConversionReference("conv-1");
+
+        assertEquals("bkg-1", payload.getBookingId());
+        assertEquals("auc-1", payload.getAuctionId());
+        assertEquals("buyer-1", payload.getUserId());
+        assertEquals(500000L, payload.getAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("conv-1", payload.getConversionReference());
+    }
+
+    @Test
+    void shouldCoverBalanceReleasedPayloadPojo() {
+        BalanceReleasedPayload payload = new BalanceReleasedPayload();
+        payload.setBookingId("bkg-2");
+        payload.setAuctionId("auc-2");
+        payload.setUserId("seller-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setReleaseReference("rel-1");
+
+        assertEquals("bkg-2", payload.getBookingId());
+        assertEquals("auc-2", payload.getAuctionId());
+        assertEquals("seller-1", payload.getUserId());
+        assertEquals(500000L, payload.getAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("rel-1", payload.getReleaseReference());
+    }
+
+    @Test
     void shouldHandleAuctionClosedWhenNoWinner() {
         EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
         event.getPayload().setHasWinner(false);
