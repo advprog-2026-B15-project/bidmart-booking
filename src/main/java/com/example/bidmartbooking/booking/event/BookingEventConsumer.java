@@ -61,6 +61,20 @@ public class BookingEventConsumer {
         }
     }
 
+    public void handleBidPlaced(EventEnvelope<BidPlacedPayload> event) {
+        validateBidPlacedEvent(event);
+
+        BidPlacedPayload payload = event.getPayload();
+        notificationService.createBidPlacedNotifications(
+                payload.getSellerUserId(),
+                payload.getBidderUserId(),
+                payload.getPreviousHighestBidderUserId(),
+                payload.getAuctionId(),
+                payload.getBidAmount(),
+                payload.getItemName()
+        );
+    }
+
     private void validateWinnerEvent(EventEnvelope<WinnerDeterminedPayload> event) {
         if (event == null || event.getPayload() == null) {
             throw new IllegalArgumentException("Invalid event: payload is required");
@@ -91,6 +105,23 @@ public class BookingEventConsumer {
         requireNonBlank(payload.getListingId(), "listingId is required");
         if (payload.getHasWinner() == null) {
             throw new IllegalArgumentException("hasWinner is required");
+        }
+    }
+
+    private void validateBidPlacedEvent(EventEnvelope<BidPlacedPayload> event) {
+        if (event == null || event.getPayload() == null) {
+            throw new IllegalArgumentException("Invalid event: payload is required");
+        }
+
+        BidPlacedPayload payload = event.getPayload();
+
+        requireNonBlank(event.getEventId(), "eventId is required");
+        requireNonBlank(payload.getAuctionId(), "auctionId is required");
+        requireNonBlank(payload.getListingId(), "listingId is required");
+        requireNonBlank(payload.getSellerUserId(), "sellerUserId is required");
+        requireNonBlank(payload.getBidderUserId(), "bidderUserId is required");
+        if (payload.getBidAmount() == null || payload.getBidAmount() < 0) {
+            throw new IllegalArgumentException("bidAmount must be >= 0");
         }
     }
 

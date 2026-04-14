@@ -344,6 +344,136 @@ class BookingEventConsumerTest {
     }
 
     @Test
+    void shouldHandleBidPlacedEvent() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+
+        bookingEventConsumer.handleBidPlaced(event);
+
+        verify(notificationService).createBidPlacedNotifications(
+                "seller-1",
+                "bidder-2",
+                "bidder-1",
+                "auc-bid",
+                250000L,
+                "Keyboard"
+        );
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedEventIsNull() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(null)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedPayloadIsNull() {
+        EventEnvelope<BidPlacedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-bid-null-payload");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedEventIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.setEventId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("eventId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAuctionIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setAuctionId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("auctionId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedListingIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setListingId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("listingId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedSellerUserIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setSellerUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("sellerUserId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedBidderUserIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidderUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidderUserId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAmountInvalid() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidAmount(-1L);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidAmount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAmountNull() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidAmount(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidAmount must be >= 0", exception.getMessage());
+    }
+
+    @Test
     void shouldThrowWhenAuctionClosedEventIdBlank() {
         EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
         event.setEventId(" ");
@@ -421,6 +551,24 @@ class BookingEventConsumerTest {
         payload.setClosedAt("2026-03-05T00:00:00Z");
         payload.setHasWinner(false);
         payload.setWinnerUserId(null);
+
+        event.setPayload(payload);
+        return event;
+    }
+
+    private EventEnvelope<BidPlacedPayload> buildValidBidPlacedEvent() {
+        EventEnvelope<BidPlacedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-bid-1");
+
+        BidPlacedPayload payload = new BidPlacedPayload();
+        payload.setAuctionId("auc-bid");
+        payload.setListingId("lst-bid");
+        payload.setSellerUserId("seller-1");
+        payload.setBidderUserId("bidder-2");
+        payload.setPreviousHighestBidderUserId("bidder-1");
+        payload.setBidAmount(250000L);
+        payload.setCurrency("IDR");
+        payload.setItemName("Keyboard");
 
         event.setPayload(payload);
         return event;

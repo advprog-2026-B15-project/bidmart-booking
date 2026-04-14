@@ -114,4 +114,46 @@ public class NotificationService {
 
         notificationRepository.saveAll(notifications);
     }
+
+    @Transactional
+    public void createBidPlacedNotifications(
+            String sellerUserId,
+            String bidderUserId,
+            String previousHighestBidderUserId,
+            String auctionId,
+            Long bidAmount,
+            String itemName
+    ) {
+        List<Notification> notifications = new ArrayList<>();
+
+        String safeItemName = itemName != null && !itemName.isBlank()
+                ? itemName
+                : "Auction Item";
+
+        Notification sellerNotification = new Notification();
+        sellerNotification.setUserId(sellerUserId);
+        sellerNotification.setType(NotificationType.NEW_BID);
+        sellerNotification.setTitle("New bid placed");
+        sellerNotification.setMessage(
+                "A new bid of IDR " + bidAmount + " was placed for " + safeItemName
+        );
+        sellerNotification.setRelatedAuctionId(auctionId);
+        notifications.add(sellerNotification);
+
+        if (previousHighestBidderUserId != null
+                && !previousHighestBidderUserId.isBlank()
+                && !previousHighestBidderUserId.equals(bidderUserId)) {
+            Notification outbidNotification = new Notification();
+            outbidNotification.setUserId(previousHighestBidderUserId);
+            outbidNotification.setType(NotificationType.OUTBID);
+            outbidNotification.setTitle("You have been outbid");
+            outbidNotification.setMessage(
+                    "Another bidder placed IDR " + bidAmount + " for " + safeItemName
+            );
+            outbidNotification.setRelatedAuctionId(auctionId);
+            notifications.add(outbidNotification);
+        }
+
+        notificationRepository.saveAll(notifications);
+    }
 }

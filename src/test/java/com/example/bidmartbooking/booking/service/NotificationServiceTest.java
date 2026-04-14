@@ -221,4 +221,87 @@ class NotificationServiceTest {
         assertEquals(true, result.getEmailEnabled());
         assertEquals(true, result.getInAppEnabled());
     }
+
+    @Test
+    void shouldCreateBidPlacedNotificationsForSellerAndOutbidUser() {
+        notificationService.createBidPlacedNotifications(
+                "seller-1",
+                "bidder-2",
+                "bidder-1",
+                "auc-bid",
+                150000L,
+                "Keyboard"
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(2, notifications.size());
+        assertEquals(NotificationType.NEW_BID, notifications.get(0).getType());
+        assertEquals("seller-1", notifications.get(0).getUserId());
+        assertEquals(NotificationType.OUTBID, notifications.get(1).getType());
+        assertEquals("bidder-1", notifications.get(1).getUserId());
+    }
+
+    @Test
+    void shouldCreateOnlySellerNotificationWhenPreviousHighestBidderMissing() {
+        notificationService.createBidPlacedNotifications(
+                "seller-2",
+                "bidder-2",
+                null,
+                "auc-bid-2",
+                250000L,
+                null
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(1, notifications.size());
+        assertEquals(NotificationType.NEW_BID, notifications.getFirst().getType());
+        assertEquals("seller-2", notifications.getFirst().getUserId());
+        assertEquals("A new bid of IDR 250000 was placed for Auction Item",
+                notifications.getFirst().getMessage());
+    }
+
+    @Test
+    void shouldSkipOutbidNotificationWhenPreviousHighestBidderEqualsBidder() {
+        notificationService.createBidPlacedNotifications(
+                "seller-3",
+                "bidder-3",
+                "bidder-3",
+                "auc-bid-3",
+                350000L,
+                "Mouse"
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(1, notifications.size());
+        assertEquals(NotificationType.NEW_BID, notifications.getFirst().getType());
+    }
+
+    @Test
+    void shouldSkipOutbidNotificationWhenPreviousHighestBidderBlank() {
+        notificationService.createBidPlacedNotifications(
+                "seller-4",
+                "bidder-4",
+                " ",
+                "auc-bid-4",
+                450000L,
+                " "
+        );
+
+        ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificationRepository).saveAll(captor.capture());
+        List<Notification> notifications = captor.getValue();
+
+        assertEquals(1, notifications.size());
+        assertEquals("A new bid of IDR 450000 was placed for Auction Item",
+                notifications.getFirst().getMessage());
+    }
 }
