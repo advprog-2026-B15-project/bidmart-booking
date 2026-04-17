@@ -1,7 +1,9 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
+import com.example.bidmartbooking.booking.repository.NotificationPreferenceRepository;
 import com.example.bidmartbooking.booking.repository.NotificationRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -16,14 +18,54 @@ import org.springframework.web.server.ResponseStatusException;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationPreferenceRepository notificationPreferenceRepository;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            NotificationPreferenceRepository notificationPreferenceRepository
+    ) {
         this.notificationRepository = notificationRepository;
+        this.notificationPreferenceRepository = notificationPreferenceRepository;
     }
 
     @Transactional(readOnly = true)
     public List<Notification> getMyNotifications(String userId) {
         return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationPreference getMyNotificationPreference(String userId) {
+        return notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationPreference preference = new NotificationPreference();
+                    preference.setUserId(userId);
+                    preference.setEmailEnabled(false);
+                    preference.setInAppEnabled(true);
+                    return preference;
+                });
+    }
+
+    @Transactional
+    public NotificationPreference upsertNotificationPreference(
+            String userId,
+            Boolean emailEnabled,
+            Boolean inAppEnabled
+    ) {
+        NotificationPreference preference = notificationPreferenceRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    NotificationPreference created = new NotificationPreference();
+                    created.setUserId(userId);
+                    return created;
+                });
+
+        if (emailEnabled != null) {
+            preference.setEmailEnabled(emailEnabled);
+        }
+        if (inAppEnabled != null) {
+            preference.setInAppEnabled(inAppEnabled);
+        }
+
+        return notificationPreferenceRepository.save(preference);
     }
 
     @Transactional
@@ -50,26 +92,150 @@ public class NotificationService {
     ) {
         List<Notification> notifications = new ArrayList<>();
 
-        Notification winnerNotif = new Notification();
-        winnerNotif.setUserId(winnerUserId);
-        winnerNotif.setType(NotificationType.WIN);
-        winnerNotif.setTitle("You won the auction");
-        winnerNotif.setMessage(
-                "You won auction " + auctionId + " with final price IDR " + finalPrice
+        addIfInAppEnabled(
+                notifications,
+                winnerUserId,
+                NotificationType.WIN,
+                "You won the auction",
+                "You won auction " + auctionId + " with final price IDR " + finalPrice,
+                auctionId
         );
-        winnerNotif.setRelatedAuctionId(auctionId);
-        notifications.add(winnerNotif);
 
         for (String loserUserId : loserUserIds) {
-            Notification loserNotif = new Notification();
-            loserNotif.setUserId(loserUserId);
-            loserNotif.setType(NotificationType.LOSE);
-            loserNotif.setTitle("You lost the auction");
-            loserNotif.setMessage("You were outbid in auction " + auctionId);
-            loserNotif.setRelatedAuctionId(auctionId);
-            notifications.add(loserNotif);
+            addIfInAppEnabled(
+                    notifications,
+                    loserUserId,
+                    NotificationType.LOSE,
+                    "You lost the auction",
+                    "You were outbid in auction " + auctionId,
+                    auctionId
+            );
         }
 
+        saveNotifications(notifications);
+    }
+
+    @Transactional
+    public void createBidPlacedNotifications(
+            String sellerUserId,
+            String bidderUserId,
+            String previousHighestBidderUserId,
+            String auctionId,
+            Long bidAmount,
+            String itemName
+    ) {
+        List<Notification> notifications = new ArrayList<>();
+
+        String safeItemName = itemName != null && !itemName.isBlank()
+                ? itemName
+                : "Auction Item";
+
+        addIfInAppEnabled(
+                notifications,
+                sellerUserId,
+                NotificationType.NEW_BID,
+                "New bid placed",
+                "A new bid of IDR " + bidAmount + " was placed for " + safeItemName,
+                auctionId
+        );
+
+        if (previousHighestBidderUserId != null
+                && !previousHighestBidderUserId.isBlank()
+                && !previousHighestBidderUserId.equals(bidderUserId)) {
+            addIfInAppEnabled(
+                    notifications,
+                    previousHighestBidderUserId,
+                    NotificationType.OUTBID,
+                    "You have been outbid",
+                    "Another bidder placed IDR " + bidAmount + " for " + safeItemName,
+                    auctionId
+            );
+        }
+
+        saveNotifications(notifications);
+    }
+
+    @Transactional
+    public void createBalanceConvertedNotification(
+            String userId,
+            String auctionId,
+            Long amount
+    ) {
+        saveNotificationIfInAppEnabled(
+                userId,
+                NotificationType.PAYMENT_CONFIRMED,
+                "Payment confirmed",
+                "Your payment of IDR " + amount + " has been confirmed",
+                auctionId
+        );
+    }
+
+    @Transactional
+    public void createBalanceReleasedNotification(
+            String userId,
+            String auctionId,
+            Long amount
+    ) {
+        saveNotificationIfInAppEnabled(
+                userId,
+                NotificationType.BALANCE_RELEASED,
+                "Balance released",
+                "Your balance release of IDR " + amount + " has been processed",
+                auctionId
+        );
+    }
+
+    private void addIfInAppEnabled(
+            List<Notification> notifications,
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId
+    ) {
+        if (!isInAppEnabled(userId)) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setRelatedAuctionId(auctionId);
+        notifications.add(notification);
+    }
+
+    private void saveNotificationIfInAppEnabled(
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId
+    ) {
+        if (!isInAppEnabled(userId)) {
+            return;
+        }
+
+        Notification notification = new Notification();
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setRelatedAuctionId(auctionId);
+        notificationRepository.save(notification);
+    }
+
+    private boolean isInAppEnabled(String userId) {
+        return notificationPreferenceRepository.findByUserId(userId)
+                .map(NotificationPreference::getInAppEnabled)
+                .orElse(true);
+    }
+
+    private void saveNotifications(List<Notification> notifications) {
+        if (notifications.isEmpty()) {
+            return;
+        }
         notificationRepository.saveAll(notifications);
     }
 }

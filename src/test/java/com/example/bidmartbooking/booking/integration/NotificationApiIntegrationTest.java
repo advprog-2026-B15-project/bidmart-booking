@@ -3,8 +3,10 @@ package com.example.bidmartbooking.booking.integration;
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
 import com.example.bidmartbooking.booking.repository.BookingRepository;
+import com.example.bidmartbooking.booking.repository.NotificationPreferenceRepository;
 import com.example.bidmartbooking.booking.repository.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,9 +34,13 @@ class NotificationApiIntegrationTest {
     @Autowired
     private BookingRepository bookingRepository;
 
+    @Autowired
+    private NotificationPreferenceRepository notificationPreferenceRepository;
+
     @BeforeEach
     void setUp() {
         notificationRepository.deleteAll();
+        notificationPreferenceRepository.deleteAll();
         bookingRepository.deleteAll();
     }
 
@@ -93,6 +99,32 @@ class NotificationApiIntegrationTest {
                         .content("{\"read\":true}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void shouldGetDefaultNotificationPreferenceWhenMissing() throws Exception {
+        mockMvc.perform(get("/api/notifications/preferences/me").header("X-User-Id", "usr-pref"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("usr-pref"))
+                .andExpect(jsonPath("$.emailEnabled").value(false))
+                .andExpect(jsonPath("$.inAppEnabled").value(true));
+    }
+
+    @Test
+    void shouldUpdateNotificationPreference() throws Exception {
+        mockMvc.perform(patch("/api/notifications/preferences/me")
+                        .header("X-User-Id", "usr-pref")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailEnabled\":true,\"inAppEnabled\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("usr-pref"))
+                .andExpect(jsonPath("$.emailEnabled").value(true))
+                .andExpect(jsonPath("$.inAppEnabled").value(false));
+
+        NotificationPreference saved = notificationPreferenceRepository.findByUserId("usr-pref")
+                .orElseThrow();
+        org.junit.jupiter.api.Assertions.assertEquals(true, saved.getEmailEnabled());
+        org.junit.jupiter.api.Assertions.assertEquals(false, saved.getInAppEnabled());
     }
 
     private Booking createBooking(String auctionId, String buyer, String seller, Long total) {

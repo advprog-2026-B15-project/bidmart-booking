@@ -222,6 +222,64 @@ class BookingEventConsumerTest {
     }
 
     @Test
+    void shouldCoverBidPlacedPayloadPojo() {
+        BidPlacedPayload payload = new BidPlacedPayload();
+        payload.setAuctionId("auc-bid");
+        payload.setListingId("lst-bid");
+        payload.setSellerUserId("seller-bid");
+        payload.setBidderUserId("bidder-1");
+        payload.setPreviousHighestBidderUserId("bidder-0");
+        payload.setBidAmount(250000L);
+        payload.setCurrency("IDR");
+        payload.setItemName("Mouse");
+
+        assertEquals("auc-bid", payload.getAuctionId());
+        assertEquals("lst-bid", payload.getListingId());
+        assertEquals("seller-bid", payload.getSellerUserId());
+        assertEquals("bidder-1", payload.getBidderUserId());
+        assertEquals("bidder-0", payload.getPreviousHighestBidderUserId());
+        assertEquals(250000L, payload.getBidAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("Mouse", payload.getItemName());
+    }
+
+    @Test
+    void shouldCoverBalanceConvertedPayloadPojo() {
+        BalanceConvertedPayload payload = new BalanceConvertedPayload();
+        payload.setBookingId("bkg-1");
+        payload.setAuctionId("auc-1");
+        payload.setUserId("buyer-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setConversionReference("conv-1");
+
+        assertEquals("bkg-1", payload.getBookingId());
+        assertEquals("auc-1", payload.getAuctionId());
+        assertEquals("buyer-1", payload.getUserId());
+        assertEquals(500000L, payload.getAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("conv-1", payload.getConversionReference());
+    }
+
+    @Test
+    void shouldCoverBalanceReleasedPayloadPojo() {
+        BalanceReleasedPayload payload = new BalanceReleasedPayload();
+        payload.setBookingId("bkg-2");
+        payload.setAuctionId("auc-2");
+        payload.setUserId("seller-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setReleaseReference("rel-1");
+
+        assertEquals("bkg-2", payload.getBookingId());
+        assertEquals("auc-2", payload.getAuctionId());
+        assertEquals("seller-1", payload.getUserId());
+        assertEquals(500000L, payload.getAmount());
+        assertEquals("IDR", payload.getCurrency());
+        assertEquals("rel-1", payload.getReleaseReference());
+    }
+
+    @Test
     void shouldHandleAuctionClosedWhenNoWinner() {
         EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
         event.getPayload().setHasWinner(false);
@@ -283,6 +341,286 @@ class BookingEventConsumerTest {
                 () -> bookingEventConsumer.handleAuctionClosed(event)
         );
         assertEquals("winnerUserId is required when hasWinner=true", exception.getMessage());
+    }
+
+    @Test
+    void shouldHandleBidPlacedEvent() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+
+        bookingEventConsumer.handleBidPlaced(event);
+
+        verify(notificationService).createBidPlacedNotifications(
+                "seller-1",
+                "bidder-2",
+                "bidder-1",
+                "auc-bid",
+                250000L,
+                "Keyboard"
+        );
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedEventIsNull() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(null)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedPayloadIsNull() {
+        EventEnvelope<BidPlacedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-bid-null-payload");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedEventIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.setEventId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("eventId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAuctionIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setAuctionId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("auctionId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedListingIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setListingId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("listingId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedSellerUserIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setSellerUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("sellerUserId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedBidderUserIdBlank() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidderUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidderUserId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAmountInvalid() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidAmount(-1L);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidAmount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBidPlacedAmountNull() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        event.getPayload().setBidAmount(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBidPlaced(event)
+        );
+
+        assertEquals("bidAmount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldHandleBalanceConvertedEvent() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+
+        bookingEventConsumer.handleBalanceConverted(event);
+
+        verify(notificationService).createBalanceConvertedNotification(
+                "buyer-1",
+                "auc-pay",
+                500000L
+        );
+    }
+
+    @Test
+    void shouldHandleBalanceReleasedEvent() {
+        EventEnvelope<BalanceReleasedPayload> event = buildValidBalanceReleasedEvent();
+
+        bookingEventConsumer.handleBalanceReleased(event);
+
+        verify(notificationService).createBalanceReleasedNotification(
+                "seller-1",
+                "auc-release",
+                500000L
+        );
+    }
+
+    @Test
+    void shouldThrowWhenBalanceConvertedEventIsNull() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceConverted(null)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceConvertedPayloadIsNull() {
+        EventEnvelope<BalanceConvertedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-balance-converted-null");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceConverted(event)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceConvertedUserIdBlank() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        event.getPayload().setUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceConverted(event)
+        );
+
+        assertEquals("userId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceConvertedAmountNull() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        event.getPayload().setAmount(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceConverted(event)
+        );
+
+        assertEquals("amount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceConvertedAmountInvalid() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        event.getPayload().setAmount(-1L);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceConverted(event)
+        );
+
+        assertEquals("amount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceReleasedEventIsNull() {
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceReleased(null)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceReleasedPayloadIsNull() {
+        EventEnvelope<BalanceReleasedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-balance-released-null");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceReleased(event)
+        );
+
+        assertEquals("Invalid event: payload is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceReleasedUserIdBlank() {
+        EventEnvelope<BalanceReleasedPayload> event = buildValidBalanceReleasedEvent();
+        event.getPayload().setUserId(" ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceReleased(event)
+        );
+
+        assertEquals("userId is required", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceReleasedAmountNull() {
+        EventEnvelope<BalanceReleasedPayload> event = buildValidBalanceReleasedEvent();
+        event.getPayload().setAmount(null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceReleased(event)
+        );
+
+        assertEquals("amount must be >= 0", exception.getMessage());
+    }
+
+    @Test
+    void shouldThrowWhenBalanceReleasedAmountInvalid() {
+        EventEnvelope<BalanceReleasedPayload> event = buildValidBalanceReleasedEvent();
+        event.getPayload().setAmount(-1L);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> bookingEventConsumer.handleBalanceReleased(event)
+        );
+
+        assertEquals("amount must be >= 0", exception.getMessage());
     }
 
     @Test
@@ -363,6 +701,56 @@ class BookingEventConsumerTest {
         payload.setClosedAt("2026-03-05T00:00:00Z");
         payload.setHasWinner(false);
         payload.setWinnerUserId(null);
+
+        event.setPayload(payload);
+        return event;
+    }
+
+    private EventEnvelope<BidPlacedPayload> buildValidBidPlacedEvent() {
+        EventEnvelope<BidPlacedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-bid-1");
+
+        BidPlacedPayload payload = new BidPlacedPayload();
+        payload.setAuctionId("auc-bid");
+        payload.setListingId("lst-bid");
+        payload.setSellerUserId("seller-1");
+        payload.setBidderUserId("bidder-2");
+        payload.setPreviousHighestBidderUserId("bidder-1");
+        payload.setBidAmount(250000L);
+        payload.setCurrency("IDR");
+        payload.setItemName("Keyboard");
+
+        event.setPayload(payload);
+        return event;
+    }
+
+    private EventEnvelope<BalanceConvertedPayload> buildValidBalanceConvertedEvent() {
+        EventEnvelope<BalanceConvertedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-balance-converted-1");
+
+        BalanceConvertedPayload payload = new BalanceConvertedPayload();
+        payload.setBookingId("bkg-1");
+        payload.setAuctionId("auc-pay");
+        payload.setUserId("buyer-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setConversionReference("conv-1");
+
+        event.setPayload(payload);
+        return event;
+    }
+
+    private EventEnvelope<BalanceReleasedPayload> buildValidBalanceReleasedEvent() {
+        EventEnvelope<BalanceReleasedPayload> event = new EventEnvelope<>();
+        event.setEventId("evt-balance-released-1");
+
+        BalanceReleasedPayload payload = new BalanceReleasedPayload();
+        payload.setBookingId("bkg-2");
+        payload.setAuctionId("auc-release");
+        payload.setUserId("seller-1");
+        payload.setAmount(500000L);
+        payload.setCurrency("IDR");
+        payload.setReleaseReference("rel-1");
 
         event.setPayload(payload);
         return event;

@@ -2,8 +2,6 @@ package com.example.bidmartbooking.booking.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -20,37 +18,21 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "bookings")
-public class Booking {
+@Table(name = "notification_preferences")
+public class NotificationPreference {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "source_event_id", unique = true, length = 100)
-    private String sourceEventId;
+    @Column(name = "user_id", nullable = false, unique = true, length = 100)
+    private String userId;
 
-    @Column(name = "auction_id", nullable = false, unique = true, length = 100)
-    private String auctionId;
+    @Column(name = "email_enabled", nullable = false)
+    private Boolean emailEnabled;
 
-    @Column(name = "listing_id", nullable = false, length = 100)
-    private String listingId;
-
-    @Column(name = "seller_user_id", nullable = false, length = 100)
-    private String sellerUserId;
-
-    @Column(name = "buyer_user_id", nullable = false, length = 100)
-    private String buyerUserId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private BookingStatus status;
-
-    @Column(name = "total_amount", nullable = false)
-    private Long totalAmount;
-
-    @Column(nullable = false, length = 3)
-    private String currency;
+    @Column(name = "in_app_enabled", nullable = false)
+    private Boolean inAppEnabled;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -58,20 +40,14 @@ public class Booking {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
-    @Column(name = "paid_at")
-    private OffsetDateTime paidAt;
-
-    @Column(name = "completed_at")
-    private OffsetDateTime completedAt;
-
     @PrePersist
     public void prePersist() {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        if (status == null) {
-            status = BookingStatus.CREATED;
+        if (emailEnabled == null) {
+            emailEnabled = false;
         }
-        if (currency == null) {
-            currency = "IDR";
+        if (inAppEnabled == null) {
+            inAppEnabled = true;
         }
         if (createdAt == null) {
             createdAt = now;

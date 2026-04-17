@@ -17,11 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,5 +131,64 @@ class BookingControllerWebMvcTest {
 
         mockMvc.perform(get("/api/bookings/99").header("X-User-Id", "usr-1"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldUpdateShipmentForSeller() throws Exception {
+        Shipment shipment = new Shipment();
+        shipment.setStatus(ShipmentStatus.SHIPPED);
+        shipment.setTrackingNumber("RESI-1");
+        shipment.setCourierName("JNE");
+
+        when(bookingService.updateShipmentForSeller(
+                4L,
+                "seller-4",
+                ShipmentStatus.SHIPPED,
+                "RESI-1",
+                "JNE"
+        )).thenReturn(shipment);
+
+        mockMvc.perform(patch("/api/bookings/4/shipment")
+                        .header("X-User-Id", "seller-4")
+                        .header("X-User-Role", "SELLER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SHIPPED\",\"trackingNumber\":\"RESI-1\",\"courierName\":\"JNE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookingId").value(4))
+                .andExpect(jsonPath("$.shipmentStatus").value("SHIPPED"));
+    }
+
+    @Test
+    void shouldRejectShipmentUpdateWhenRoleIsInvalid() throws Exception {
+        mockMvc.perform(patch("/api/bookings/4/shipment")
+                        .header("X-User-Id", "buyer-4")
+                        .header("X-User-Role", "BUYER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SHIPPED\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldConfirmDeliveryForBuyer() throws Exception {
+        Booking booking = new Booking();
+        booking.setId(5L);
+        booking.setStatus(BookingStatus.COMPLETED);
+
+        when(bookingService.confirmDeliveryForBuyer(5L, "buyer-5")).thenReturn(booking);
+
+        mockMvc.perform(patch("/api/bookings/5/confirm-delivery")
+                        .header("X-User-Id", "buyer-5")
+                        .header("X-User-Role", "BUYER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.bookingId").value(5))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    @Test
+    void shouldRejectConfirmDeliveryWhenRoleIsInvalid() throws Exception {
+        mockMvc.perform(patch("/api/bookings/5/confirm-delivery")
+                        .header("X-User-Id", "seller-5")
+                        .header("X-User-Role", "SELLER"))
+                .andExpect(status().isBadRequest());
     }
 }

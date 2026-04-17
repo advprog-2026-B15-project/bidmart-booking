@@ -2,6 +2,7 @@ package com.example.bidmartbooking.booking.controller;
 
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.Notification;
+import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import java.time.OffsetDateTime;
@@ -91,6 +92,43 @@ class NotificationControllerWebMvcTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(3))
                 .andExpect(jsonPath("$.isRead").value(true));
+    }
+
+    @Test
+    void shouldGetMyNotificationPreference() throws Exception {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId("usr-1");
+        preference.setEmailEnabled(true);
+        preference.setInAppEnabled(false);
+
+        when(notificationService.getMyNotificationPreference("usr-1"))
+                .thenReturn(preference);
+
+        mockMvc.perform(get("/api/notifications/preferences/me").header("X-User-Id", "usr-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("usr-1"))
+                .andExpect(jsonPath("$.emailEnabled").value(true))
+                .andExpect(jsonPath("$.inAppEnabled").value(false));
+    }
+
+    @Test
+    void shouldUpdateMyNotificationPreference() throws Exception {
+        NotificationPreference preference = new NotificationPreference();
+        preference.setUserId("usr-1");
+        preference.setEmailEnabled(false);
+        preference.setInAppEnabled(true);
+
+        when(notificationService.upsertNotificationPreference("usr-1", false, true))
+                .thenReturn(preference);
+
+        mockMvc.perform(patch("/api/notifications/preferences/me")
+                        .header("X-User-Id", "usr-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"emailEnabled\":false,\"inAppEnabled\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value("usr-1"))
+                .andExpect(jsonPath("$.emailEnabled").value(false))
+                .andExpect(jsonPath("$.inAppEnabled").value(true));
     }
 
     @Test
