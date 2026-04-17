@@ -148,9 +148,73 @@ class EntityLifecycleTest {
     }
 
     @Test
+    void notificationPreferencePrePersistShouldSetDefaults() {
+        NotificationPreference preference = new NotificationPreference();
+
+        preference.prePersist();
+
+        assertEquals(false, preference.getEmailEnabled());
+        assertEquals(true, preference.getInAppEnabled());
+        assertNotNull(preference.getCreatedAt());
+        assertNotNull(preference.getUpdatedAt());
+    }
+
+    @Test
+    void notificationPreferencePrePersistShouldKeepExistingValues() {
+        NotificationPreference preference = new NotificationPreference();
+        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusHours(3);
+        OffsetDateTime updatedAt = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(15);
+        preference.setEmailEnabled(true);
+        preference.setInAppEnabled(false);
+        preference.setCreatedAt(createdAt);
+        preference.setUpdatedAt(updatedAt);
+
+        preference.prePersist();
+
+        assertEquals(true, preference.getEmailEnabled());
+        assertEquals(false, preference.getInAppEnabled());
+        assertEquals(createdAt, preference.getCreatedAt());
+        assertEquals(updatedAt, preference.getUpdatedAt());
+    }
+
+    @Test
+    void notificationPreferencePreUpdateShouldRefreshUpdatedAt() {
+        NotificationPreference preference = new NotificationPreference();
+        OffsetDateTime old = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(45);
+        preference.setUpdatedAt(old);
+
+        preference.preUpdate();
+
+        assertTrue(preference.getUpdatedAt().isAfter(old));
+    }
+
+    @Test
     void enumsShouldContainExpectedValues() {
         assertNotNull(BookingStatus.valueOf("CREATED"));
+        assertNotNull(BookingStatus.valueOf("PAID"));
         assertNotNull(ShipmentStatus.valueOf("PENDING"));
         assertNotNull(NotificationType.valueOf("WIN"));
+    }
+
+    @Test
+    void bookingStatusShouldAllowOnlySequentialTransitions() {
+        assertTrue(BookingStatus.CREATED.canTransitionTo(BookingStatus.PAID));
+        assertTrue(BookingStatus.PAID.canTransitionTo(BookingStatus.SHIPPED));
+        assertTrue(BookingStatus.SHIPPED.canTransitionTo(BookingStatus.DELIVERED));
+        assertTrue(BookingStatus.DELIVERED.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.CREATED.canTransitionTo(BookingStatus.SHIPPED));
+        assertEquals(false, BookingStatus.PAID.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.SHIPPED.canTransitionTo(BookingStatus.COMPLETED));
+        assertEquals(false, BookingStatus.DELIVERED.canTransitionTo(BookingStatus.PAID));
+        assertEquals(false, BookingStatus.COMPLETED.canTransitionTo(BookingStatus.CREATED));
+    }
+
+    @Test
+    void shipmentStatusShouldAllowOnlySequentialTransitions() {
+        assertTrue(ShipmentStatus.PENDING.canTransitionTo(ShipmentStatus.SHIPPED));
+        assertTrue(ShipmentStatus.SHIPPED.canTransitionTo(ShipmentStatus.DELIVERED));
+        assertEquals(false, ShipmentStatus.PENDING.canTransitionTo(ShipmentStatus.DELIVERED));
+        assertEquals(false, ShipmentStatus.SHIPPED.canTransitionTo(ShipmentStatus.PENDING));
+        assertEquals(false, ShipmentStatus.DELIVERED.canTransitionTo(ShipmentStatus.PENDING));
     }
 }

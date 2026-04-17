@@ -13,9 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -87,6 +89,40 @@ class BookingApiIntegrationTest {
         mockMvc.perform(get("/api/bookings/{id}", booking.getId()).header("X-User-Id", "usr-other"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void shouldUpdateShipmentForSeller() throws Exception {
+        Booking booking = createBooking("auc-5", "buyer-5", "seller-5", 500000L);
+        booking.setStatus(BookingStatus.PAID);
+        bookingRepository.save(booking);
+
+        Shipment shipment = new Shipment();
+        shipment.setBooking(booking);
+        shipment.setStatus(ShipmentStatus.PENDING);
+        shipmentRepository.save(shipment);
+
+        mockMvc.perform(patch("/api/bookings/{id}/shipment", booking.getId())
+                        .header("X-User-Id", "seller-5")
+                        .header("X-User-Role", "SELLER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"SHIPPED\",\"trackingNumber\":\"RESI-5\",\"courierName\":\"JNE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shipmentStatus").value("SHIPPED"))
+                .andExpect(jsonPath("$.trackingNumber").value("RESI-5"));
+    }
+
+    @Test
+    void shouldConfirmDeliveryForBuyer() throws Exception {
+        Booking booking = createBooking("auc-6", "buyer-6", "seller-6", 600000L);
+        booking.setStatus(BookingStatus.DELIVERED);
+        bookingRepository.save(booking);
+
+        mockMvc.perform(patch("/api/bookings/{id}/confirm-delivery", booking.getId())
+                        .header("X-User-Id", "buyer-6")
+                        .header("X-User-Role", "BUYER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
 
     private Booking createBooking(String auctionId, String buyer, String seller, Long total) {

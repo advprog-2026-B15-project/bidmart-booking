@@ -8,6 +8,8 @@ import com.example.bidmartbooking.booking.model.ShipmentStatus;
 import com.example.bidmartbooking.booking.repository.BookingItemRepository;
 import com.example.bidmartbooking.booking.repository.BookingRepository;
 import com.example.bidmartbooking.booking.repository.ShipmentRepository;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -75,6 +77,103 @@ public class BookingService {
         createShipment(savedBooking);
 
         return savedBooking;
+    }
+
+    @Transactional
+    public Booking transitionBookingStatus(Long bookingId, BookingStatus nextStatus) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        BookingStatus currentStatus = booking.getStatus();
+        if (currentStatus == null || !currentStatus.canTransitionTo(nextStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid booking status transition"
+            );
+        }
+
+        booking.setStatus(nextStatus);
+        applyLifecycleTimestamps(booking, nextStatus);
+        return bookingRepository.save(booking);
+    }
+
+    @Transactional
+    public Shipment updateShipmentForSeller(
+            Long bookingId,
+            String sellerUserId,
+            ShipmentStatus nextStatus,
+            String trackingNumber,
+            String courierName
+    ) {
+        Booking booking = bookingRepository.findByIdAndSellerUserId(bookingId, sellerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        Shipment shipment = shipmentRepository.findByBookingId(bookingId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Shipment not found"
+                ));
+
+        ShipmentStatus currentStatus = shipment.getStatus();
+        if (currentStatus == null || !currentStatus.canTransitionTo(nextStatus)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid shipment status transition"
+            );
+        }
+
+        shipment.setStatus(nextStatus);
+        if (trackingNumber != null && !trackingNumber.isBlank()) {
+            shipment.setTrackingNumber(trackingNumber);
+        }
+        if (courierName != null && !courierName.isBlank()) {
+            shipment.setCourierName(courierName);
+        }
+
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (nextStatus == ShipmentStatus.SHIPPED && shipment.getShippedAt() == null) {
+            shipment.setShippedAt(now);
+            booking.setStatus(BookingStatus.SHIPPED);
+        }
+        if (nextStatus == ShipmentStatus.DELIVERED && shipment.getDeliveredAt() == null) {
+            shipment.setDeliveredAt(now);
+            booking.setStatus(BookingStatus.DELIVERED);
+        }
+
+        bookingRepository.save(booking);
+        return shipmentRepository.save(shipment);
+    }
+
+    @Transactional
+    public Booking confirmDeliveryForBuyer(Long bookingId, String buyerUserId) {
+        Booking booking = bookingRepository.findByIdAndBuyerUserId(bookingId, buyerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        if (booking.getStatus() != BookingStatus.DELIVERED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Booking is not ready for delivery confirmation"
+            );
+        }
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        applyLifecycleTimestamps(booking, BookingStatus.COMPLETED);
+        return bookingRepository.save(booking);
+    }
+
+    private void applyLifecycleTimestamps(Booking booking, BookingStatus nextStatus) {
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        if (nextStatus == BookingStatus.PAID && booking.getPaidAt() == null) {
+            booking.setPaidAt(now);
+        }
+        if (nextStatus == BookingStatus.COMPLETED && booking.getCompletedAt() == null) {
+            booking.setCompletedAt(now);
+        }
     }
 
     private void createBookingItem(
