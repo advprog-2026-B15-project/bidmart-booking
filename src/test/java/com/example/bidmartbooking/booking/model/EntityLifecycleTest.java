@@ -189,6 +189,49 @@ class EntityLifecycleTest {
     }
 
     @Test
+    void processedEventPrePersistShouldSetProcessedAtWhenNull() {
+        ProcessedEvent processedEvent = new ProcessedEvent();
+
+        processedEvent.prePersist();
+
+        assertNotNull(processedEvent.getProcessedAt());
+    }
+
+    @Test
+    void processedEventPrePersistShouldKeepProcessedAtWhenAlreadySet() {
+        ProcessedEvent processedEvent = new ProcessedEvent();
+        OffsetDateTime processedAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(1);
+        processedEvent.setProcessedAt(processedAt);
+
+        processedEvent.prePersist();
+
+        assertEquals(processedAt, processedEvent.getProcessedAt());
+    }
+
+    @Test
+    void deadLetterEventPrePersistShouldSetDefaults() {
+        DeadLetterEvent deadLetterEvent = new DeadLetterEvent();
+
+        deadLetterEvent.prePersist();
+
+        assertEquals(0, deadLetterEvent.getRetryCount());
+        assertNotNull(deadLetterEvent.getFailedAt());
+    }
+
+    @Test
+    void deadLetterEventPrePersistShouldKeepExistingValues() {
+        DeadLetterEvent deadLetterEvent = new DeadLetterEvent();
+        OffsetDateTime failedAt = OffsetDateTime.now(ZoneOffset.UTC).minusDays(1);
+        deadLetterEvent.setRetryCount(3);
+        deadLetterEvent.setFailedAt(failedAt);
+
+        deadLetterEvent.prePersist();
+
+        assertEquals(3, deadLetterEvent.getRetryCount());
+        assertEquals(failedAt, deadLetterEvent.getFailedAt());
+    }
+
+    @Test
     void enumsShouldContainExpectedValues() {
         assertNotNull(BookingStatus.valueOf("CREATED"));
         assertNotNull(BookingStatus.valueOf("PAID"));
