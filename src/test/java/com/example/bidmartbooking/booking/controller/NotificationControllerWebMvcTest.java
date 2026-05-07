@@ -5,6 +5,7 @@ import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
 import com.example.bidmartbooking.booking.service.NotificationService;
+import com.example.bidmartbooking.booking.service.RealtimeEventService;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -31,6 +32,9 @@ class NotificationControllerWebMvcTest {
 
     @MockBean
     private NotificationService notificationService;
+
+    @MockBean
+    private RealtimeEventService realtimeEventService;
 
     @Test
     void shouldGetMyNotifications() throws Exception {

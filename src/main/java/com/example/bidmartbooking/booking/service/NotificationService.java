@@ -1,5 +1,6 @@
 package com.example.bidmartbooking.booking.service;
 
+import com.example.bidmartbooking.booking.dto.RealtimeAuctionUpdateResponse;
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
@@ -8,7 +9,9 @@ import com.example.bidmartbooking.booking.repository.NotificationRepository;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,13 +22,16 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationPreferenceRepository notificationPreferenceRepository;
+    private final RealtimeEventService realtimeEventService;
 
     public NotificationService(
             NotificationRepository notificationRepository,
-            NotificationPreferenceRepository notificationPreferenceRepository
+            NotificationPreferenceRepository notificationPreferenceRepository,
+            RealtimeEventService realtimeEventService
     ) {
         this.notificationRepository = notificationRepository;
         this.notificationPreferenceRepository = notificationPreferenceRepository;
+        this.realtimeEventService = realtimeEventService;
     }
 
     @Transactional(readOnly = true)
@@ -113,6 +119,14 @@ public class NotificationService {
         }
 
         saveNotifications(notifications);
+        publishBidPlacedAuctionUpdates(
+                sellerUserId,
+                bidderUserId,
+                previousHighestBidderUserId,
+                auctionId,
+                bidAmount,
+                safeItemName
+        );
     }
 
     @Transactional
@@ -223,7 +237,8 @@ public class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setRelatedAuctionId(auctionId);
-        notificationRepository.save(notification);
+        Notification savedNotification = notificationRepository.save(notification);
+        realtimeEventService.publishNotification(savedNotification);
     }
 
     private boolean isInAppEnabled(String userId) {
@@ -236,6 +251,35 @@ public class NotificationService {
         if (notifications.isEmpty()) {
             return;
         }
-        notificationRepository.saveAll(notifications);
+        List<Notification> savedNotifications = notificationRepository.saveAll(notifications);
+        savedNotifications.forEach(realtimeEventService::publishNotification);
+    }
+
+    private void publishBidPlacedAuctionUpdates(
+            String sellerUserId,
+            String bidderUserId,
+            String previousHighestBidderUserId,
+            String auctionId,
+            Long bidAmount,
+            String itemName
+    ) {
+        RealtimeAuctionUpdateResponse update = new RealtimeAuctionUpdateResponse();
+        update.setAuctionId(auctionId);
+        update.setItemName(itemName);
+        update.setCurrentPrice(bidAmount);
+        update.setEventType("BidPlaced");
+
+        Set<String> recipients = new LinkedHashSet<>();
+        recipients.add(sellerUserId);
+        recipients.add(bidderUserId);
+        if (previousHighestBidderUserId != null
+                && !previousHighestBidderUserId.isBlank()) {
+            recipients.add(previousHighestBidderUserId);
+        }
+
+        recipients.forEach(userId -> realtimeEventService.publishAuctionUpdate(
+                userId,
+                update
+        ));
     }
 }
