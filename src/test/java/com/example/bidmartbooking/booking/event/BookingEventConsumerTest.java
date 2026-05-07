@@ -3,7 +3,10 @@ package com.example.bidmartbooking.booking.event;
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
+import com.example.bidmartbooking.booking.service.ProcessedEventService;
+import com.example.bidmartbooking.booking.service.ReliableEventProcessor;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,8 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,11 +33,27 @@ class BookingEventConsumerTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private ProcessedEventService processedEventService;
+
+    @Mock
+    private ReliableEventProcessor reliableEventProcessor;
+
     private BookingEventConsumer bookingEventConsumer;
 
     @BeforeEach
     void setUp() {
-        bookingEventConsumer = new BookingEventConsumer(bookingService, notificationService);
+        bookingEventConsumer = new BookingEventConsumer(
+                bookingService,
+                notificationService,
+                processedEventService,
+                reliableEventProcessor
+        );
+        lenient().when(reliableEventProcessor.process(any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    Supplier<?> action = invocation.getArgument(2);
+                    return action.get();
+                });
     }
 
     @Test
@@ -55,6 +77,7 @@ class BookingEventConsumerTest {
                 any(), losersCaptor.capture(), any(), any()
         );
         assertEquals(0, losersCaptor.getValue().size());
+        verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
     }
 
     @Test
@@ -203,6 +226,24 @@ class BookingEventConsumerTest {
                 "auc-1",
                 5000L
         );
+        verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
+    }
+
+    @Test
+    void shouldSkipDuplicateWinnerEvent() {
+        EventEnvelope<WinnerDeterminedPayload> event = buildValidEvent();
+        when(processedEventService.hasProcessed("evt-1")).thenReturn(true);
+
+        Booking result = bookingEventConsumer.handleWinnerDetermined(event);
+
+        assertNull(result);
+        verify(bookingService, never()).createBookingFromWinnerEvent(
+                any(), any(), any(), any(), any(), any(), any(), any(), any()
+        );
+        verify(notificationService, never()).createWinLoseNotifications(
+                any(), any(), any(), any()
+        );
+        verify(processedEventService, never()).markProcessed(any(), any());
     }
 
     @Test
@@ -286,6 +327,7 @@ class BookingEventConsumerTest {
         event.getPayload().setWinnerUserId(null);
 
         bookingEventConsumer.handleAuctionClosed(event);
+        verify(processedEventService).markProcessed("evt-auction-closed-1", "AuctionClosed");
     }
 
     @Test
@@ -295,6 +337,17 @@ class BookingEventConsumerTest {
         event.getPayload().setWinnerUserId("winner-1");
 
         bookingEventConsumer.handleAuctionClosed(event);
+        verify(processedEventService).markProcessed("evt-auction-closed-1", "AuctionClosed");
+    }
+
+    @Test
+    void shouldSkipDuplicateAuctionClosedEvent() {
+        EventEnvelope<AuctionClosedPayload> event = buildValidAuctionClosedEvent();
+        when(processedEventService.hasProcessed("evt-auction-closed-1")).thenReturn(true);
+
+        bookingEventConsumer.handleAuctionClosed(event);
+
+        verify(processedEventService, never()).markProcessed(any(), any());
     }
 
     @Test
@@ -357,6 +410,20 @@ class BookingEventConsumerTest {
                 250000L,
                 "Keyboard"
         );
+        verify(processedEventService).markProcessed("evt-bid-1", "BidPlaced");
+    }
+
+    @Test
+    void shouldSkipDuplicateBidPlacedEvent() {
+        EventEnvelope<BidPlacedPayload> event = buildValidBidPlacedEvent();
+        when(processedEventService.hasProcessed("evt-bid-1")).thenReturn(true);
+
+        bookingEventConsumer.handleBidPlaced(event);
+
+        verify(notificationService, never()).createBidPlacedNotifications(
+                any(), any(), any(), any(), any(), any()
+        );
+        verify(processedEventService, never()).markProcessed(any(), any());
     }
 
     @Test
@@ -484,6 +551,7 @@ class BookingEventConsumerTest {
                 "auc-pay",
                 500000L
         );
+        verify(processedEventService).markProcessed("evt-balance-converted-1", "BalanceConverted");
     }
 
     @Test
@@ -497,6 +565,33 @@ class BookingEventConsumerTest {
                 "auc-release",
                 500000L
         );
+        verify(processedEventService).markProcessed("evt-balance-released-1", "BalanceReleased");
+    }
+
+    @Test
+    void shouldSkipDuplicateBalanceConvertedEvent() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        when(processedEventService.hasProcessed("evt-balance-converted-1")).thenReturn(true);
+
+        bookingEventConsumer.handleBalanceConverted(event);
+
+        verify(notificationService, never()).createBalanceConvertedNotification(
+                any(), any(), any()
+        );
+        verify(processedEventService, never()).markProcessed(any(), any());
+    }
+
+    @Test
+    void shouldSkipDuplicateBalanceReleasedEvent() {
+        EventEnvelope<BalanceReleasedPayload> event = buildValidBalanceReleasedEvent();
+        when(processedEventService.hasProcessed("evt-balance-released-1")).thenReturn(true);
+
+        bookingEventConsumer.handleBalanceReleased(event);
+
+        verify(notificationService, never()).createBalanceReleasedNotification(
+                any(), any(), any()
+        );
+        verify(processedEventService, never()).markProcessed(any(), any());
     }
 
     @Test

@@ -7,6 +7,7 @@ import com.example.bidmartbooking.booking.dto.UpdateNotificationPreferenceReques
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.service.NotificationService;
+import com.example.bidmartbooking.booking.service.RealtimeEventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,6 +15,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -29,9 +32,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final RealtimeEventService realtimeEventService;
 
-    public NotificationController(NotificationService notificationService) {
+    public NotificationController(
+            NotificationService notificationService,
+            RealtimeEventService realtimeEventService
+    ) {
         this.notificationService = notificationService;
+        this.realtimeEventService = realtimeEventService;
     }
 
     @GetMapping("/me")
@@ -44,6 +52,15 @@ public class NotificationController {
                 .stream()
                 .map(this::toNotificationResponse)
                 .toList();
+    }
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(summary = "Subscribe to realtime notification and auction events")
+    public SseEmitter streamMyRealtimeEvents(
+            @Parameter(description = "Current user id", required = true)
+            @RequestHeader("X-User-Id") String userId
+    ) {
+        return realtimeEventService.subscribe(userId);
     }
 
     @GetMapping("/preferences/me")
