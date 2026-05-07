@@ -91,6 +91,10 @@ tasks.jacocoTestCoverageVerification {
 	}
 }
 
+tasks.check {
+	dependsOn(tasks.jacocoTestCoverageVerification)
+}
+
 checkstyle {
 	toolVersion = "10.18.2"
 	configFile = file("config/checkstyle/checkstyle.xml")
