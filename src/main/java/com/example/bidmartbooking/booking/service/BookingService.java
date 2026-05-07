@@ -23,17 +23,20 @@ public class BookingService {
     private final BookingItemRepository bookingItemRepository;
     private final ShipmentRepository shipmentRepository;
     private final BookingStatusAuditLogService auditLogService;
+    private final RealtimeEventService realtimeEventService;
 
     public BookingService(
             BookingRepository bookingRepository,
             BookingItemRepository bookingItemRepository,
             ShipmentRepository shipmentRepository,
-            BookingStatusAuditLogService auditLogService
+            BookingStatusAuditLogService auditLogService,
+            RealtimeEventService realtimeEventService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
         this.shipmentRepository = shipmentRepository;
         this.auditLogService = auditLogService;
+        this.realtimeEventService = realtimeEventService;
     }
 
     @Transactional(readOnly = true)
@@ -78,7 +81,7 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         createBookingItem(savedBooking, listingId, itemName, quantity, finalPrice);
         createShipment(savedBooking);
-        auditLogService.recordStatusChange(
+        recordAndPublishStatusChange(
                 savedBooking,
                 null,
                 BookingStatus.CREATED,
@@ -108,7 +111,7 @@ public class BookingService {
         booking.setStatus(nextStatus);
         applyLifecycleTimestamps(booking, nextStatus);
         Booking savedBooking = bookingRepository.save(booking);
-        auditLogService.recordStatusChange(
+        recordAndPublishStatusChange(
                 savedBooking,
                 currentStatus,
                 nextStatus,
@@ -172,7 +175,7 @@ public class BookingService {
 
         Booking savedBooking = bookingRepository.save(booking);
         if (nextBookingStatus != null) {
-            auditLogService.recordStatusChange(
+            recordAndPublishStatusChange(
                     savedBooking,
                     previousBookingStatus,
                     nextBookingStatus,
@@ -202,7 +205,7 @@ public class BookingService {
         booking.setStatus(BookingStatus.COMPLETED);
         applyLifecycleTimestamps(booking, BookingStatus.COMPLETED);
         Booking savedBooking = bookingRepository.save(booking);
-        auditLogService.recordStatusChange(
+        recordAndPublishStatusChange(
                 savedBooking,
                 currentStatus,
                 BookingStatus.COMPLETED,
@@ -211,6 +214,32 @@ public class BookingService {
                 "BUYER_CONFIRMED_DELIVERY"
         );
         return savedBooking;
+    }
+
+    private void recordAndPublishStatusChange(
+            Booking booking,
+            BookingStatus fromStatus,
+            BookingStatus toStatus,
+            String changedByUserId,
+            String changedByRole,
+            String reason
+    ) {
+        auditLogService.recordStatusChange(
+                booking,
+                fromStatus,
+                toStatus,
+                changedByUserId,
+                changedByRole,
+                reason
+        );
+        realtimeEventService.publishBookingStatusChange(
+                booking,
+                fromStatus,
+                toStatus,
+                changedByUserId,
+                changedByRole,
+                reason
+        );
     }
 
     private void applyLifecycleTimestamps(Booking booking, BookingStatus nextStatus) {

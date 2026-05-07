@@ -1,6 +1,8 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.dto.RealtimeAuctionUpdateResponse;
+import com.example.bidmartbooking.booking.model.Booking;
+import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationType;
 import org.junit.jupiter.api.Test;
@@ -47,5 +49,27 @@ class RealtimeEventServiceTest {
         service.publishAuctionUpdate("user-3", update);
 
         assertEquals(0, service.getSubscriberCount("user-3"));
+    }
+
+    @Test
+    void shouldIgnoreBookingStatusUpdateWhenUsersHaveNoSubscriber() {
+        RealtimeEventService service = new RealtimeEventService();
+        Booking booking = new Booking();
+        booking.setId(10L);
+        booking.setAuctionId("auc-10");
+        booking.setBuyerUserId("buyer-10");
+        booking.setSellerUserId("seller-10");
+
+        service.publishBookingStatusChange(
+                booking,
+                BookingStatus.PAID,
+                BookingStatus.SHIPPED,
+                "seller-10",
+                "SELLER",
+                "SHIPMENT_STATUS_UPDATED"
+        );
+
+        assertEquals(0, service.getSubscriberCount("buyer-10"));
+        assertEquals(0, service.getSubscriberCount("seller-10"));
     }
 }

@@ -1,11 +1,16 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.dto.NotificationResponse;
+import com.example.bidmartbooking.booking.dto.BookingStatusUpdateResponse;
 import com.example.bidmartbooking.booking.dto.RealtimeAuctionUpdateResponse;
+import com.example.bidmartbooking.booking.model.Booking;
+import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.model.Notification;
 import java.io.IOException;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Service;
@@ -45,6 +50,33 @@ public class RealtimeEventService {
             RealtimeAuctionUpdateResponse update
     ) {
         send(userId, "auction-update", update);
+    }
+
+    public void publishBookingStatusChange(
+            Booking booking,
+            BookingStatus fromStatus,
+            BookingStatus toStatus,
+            String changedByUserId,
+            String changedByRole,
+            String reason
+    ) {
+        BookingStatusUpdateResponse update = new BookingStatusUpdateResponse();
+        update.setBookingId(booking.getId());
+        update.setAuctionId(booking.getAuctionId());
+        update.setFromStatus(fromStatus);
+        update.setToStatus(toStatus);
+        update.setChangedByUserId(changedByUserId);
+        update.setChangedByRole(changedByRole);
+        update.setReason(reason);
+
+        Set<String> recipients = new LinkedHashSet<>();
+        recipients.add(booking.getBuyerUserId());
+        recipients.add(booking.getSellerUserId());
+        recipients.forEach(userId -> send(
+                userId,
+                "booking-status-changed",
+                update
+        ));
     }
 
     int getSubscriberCount(String userId) {
