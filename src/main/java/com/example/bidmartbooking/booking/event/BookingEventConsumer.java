@@ -4,6 +4,7 @@ import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
+import com.example.bidmartbooking.booking.service.ReliableEventProcessor;
 import java.util.Collections;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -20,15 +21,18 @@ public class BookingEventConsumer {
     private final BookingService bookingService;
     private final NotificationService notificationService;
     private final ProcessedEventService processedEventService;
+    private final ReliableEventProcessor reliableEventProcessor;
 
     public BookingEventConsumer(
             BookingService bookingService,
             NotificationService notificationService,
-            ProcessedEventService processedEventService
+            ProcessedEventService processedEventService,
+            ReliableEventProcessor reliableEventProcessor
     ) {
         this.bookingService = bookingService;
         this.notificationService = notificationService;
         this.processedEventService = processedEventService;
+        this.reliableEventProcessor = reliableEventProcessor;
     }
 
     public Booking handleWinnerDetermined(EventEnvelope<WinnerDeterminedPayload> event) {
@@ -37,34 +41,36 @@ public class BookingEventConsumer {
             return null;
         }
 
-        WinnerDeterminedPayload payload = event.getPayload();
-        String currency = payload.getCurrency() != null ? payload.getCurrency() : "IDR";
+        return reliableEventProcessor.process(event, WINNER_DETERMINED, () -> {
+            WinnerDeterminedPayload payload = event.getPayload();
+            String currency = payload.getCurrency() != null ? payload.getCurrency() : "IDR";
 
-        Booking booking = bookingService.createBookingFromWinnerEvent(
-                event.getEventId(),
-                payload.getAuctionId(),
-                payload.getListingId(),
-                payload.getSellerUserId(),
-                payload.getWinnerUserId(),
-                payload.getFinalPrice(),
-                currency,
-                payload.getItemName(),
-                payload.getQuantity()
-        );
+            Booking booking = bookingService.createBookingFromWinnerEvent(
+                    event.getEventId(),
+                    payload.getAuctionId(),
+                    payload.getListingId(),
+                    payload.getSellerUserId(),
+                    payload.getWinnerUserId(),
+                    payload.getFinalPrice(),
+                    currency,
+                    payload.getItemName(),
+                    payload.getQuantity()
+            );
 
-        List<String> loserUserIds = payload.getLoserUserIds() != null
-                ? payload.getLoserUserIds()
-                : Collections.emptyList();
+            List<String> loserUserIds = payload.getLoserUserIds() != null
+                    ? payload.getLoserUserIds()
+                    : Collections.emptyList();
 
-        notificationService.createWinLoseNotifications(
-                payload.getWinnerUserId(),
-                loserUserIds,
-                payload.getAuctionId(),
-                payload.getFinalPrice()
-        );
+            notificationService.createWinLoseNotifications(
+                    payload.getWinnerUserId(),
+                    loserUserIds,
+                    payload.getAuctionId(),
+                    payload.getFinalPrice()
+            );
 
-        processedEventService.markProcessed(event.getEventId(), WINNER_DETERMINED);
-        return booking;
+            processedEventService.markProcessed(event.getEventId(), WINNER_DETERMINED);
+            return booking;
+        });
     }
 
     public void handleAuctionClosed(EventEnvelope<AuctionClosedPayload> event) {
@@ -72,7 +78,10 @@ public class BookingEventConsumer {
         if (hasAlreadyProcessed(event)) {
             return;
         }
-        processedEventService.markProcessed(event.getEventId(), AUCTION_CLOSED);
+        reliableEventProcessor.process(event, AUCTION_CLOSED, () -> {
+            processedEventService.markProcessed(event.getEventId(), AUCTION_CLOSED);
+            return null;
+        });
     }
 
     public void handleBidPlaced(EventEnvelope<BidPlacedPayload> event) {
@@ -81,16 +90,19 @@ public class BookingEventConsumer {
             return;
         }
 
-        BidPlacedPayload payload = event.getPayload();
-        notificationService.createBidPlacedNotifications(
-                payload.getSellerUserId(),
-                payload.getBidderUserId(),
-                payload.getPreviousHighestBidderUserId(),
-                payload.getAuctionId(),
-                payload.getBidAmount(),
-                payload.getItemName()
-        );
-        processedEventService.markProcessed(event.getEventId(), BID_PLACED);
+        reliableEventProcessor.process(event, BID_PLACED, () -> {
+            BidPlacedPayload payload = event.getPayload();
+            notificationService.createBidPlacedNotifications(
+                    payload.getSellerUserId(),
+                    payload.getBidderUserId(),
+                    payload.getPreviousHighestBidderUserId(),
+                    payload.getAuctionId(),
+                    payload.getBidAmount(),
+                    payload.getItemName()
+            );
+            processedEventService.markProcessed(event.getEventId(), BID_PLACED);
+            return null;
+        });
     }
 
     public void handleBalanceConverted(EventEnvelope<BalanceConvertedPayload> event) {
@@ -99,13 +111,16 @@ public class BookingEventConsumer {
             return;
         }
 
-        BalanceConvertedPayload payload = event.getPayload();
-        notificationService.createBalanceConvertedNotification(
-                payload.getUserId(),
-                payload.getAuctionId(),
-                payload.getAmount()
-        );
-        processedEventService.markProcessed(event.getEventId(), BALANCE_CONVERTED);
+        reliableEventProcessor.process(event, BALANCE_CONVERTED, () -> {
+            BalanceConvertedPayload payload = event.getPayload();
+            notificationService.createBalanceConvertedNotification(
+                    payload.getUserId(),
+                    payload.getAuctionId(),
+                    payload.getAmount()
+            );
+            processedEventService.markProcessed(event.getEventId(), BALANCE_CONVERTED);
+            return null;
+        });
     }
 
     public void handleBalanceReleased(EventEnvelope<BalanceReleasedPayload> event) {
@@ -114,13 +129,16 @@ public class BookingEventConsumer {
             return;
         }
 
-        BalanceReleasedPayload payload = event.getPayload();
-        notificationService.createBalanceReleasedNotification(
-                payload.getUserId(),
-                payload.getAuctionId(),
-                payload.getAmount()
-        );
-        processedEventService.markProcessed(event.getEventId(), BALANCE_RELEASED);
+        reliableEventProcessor.process(event, BALANCE_RELEASED, () -> {
+            BalanceReleasedPayload payload = event.getPayload();
+            notificationService.createBalanceReleasedNotification(
+                    payload.getUserId(),
+                    payload.getAuctionId(),
+                    payload.getAmount()
+            );
+            processedEventService.markProcessed(event.getEventId(), BALANCE_RELEASED);
+            return null;
+        });
     }
 
     private void validateWinnerEvent(EventEnvelope<WinnerDeterminedPayload> event) {

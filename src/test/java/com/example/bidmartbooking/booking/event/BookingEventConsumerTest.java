@@ -4,7 +4,9 @@ import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
+import com.example.bidmartbooking.booking.service.ReliableEventProcessor;
 import java.util.List;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +36,9 @@ class BookingEventConsumerTest {
     @Mock
     private ProcessedEventService processedEventService;
 
+    @Mock
+    private ReliableEventProcessor reliableEventProcessor;
+
     private BookingEventConsumer bookingEventConsumer;
 
     @BeforeEach
@@ -40,8 +46,14 @@ class BookingEventConsumerTest {
         bookingEventConsumer = new BookingEventConsumer(
                 bookingService,
                 notificationService,
-                processedEventService
+                processedEventService,
+                reliableEventProcessor
         );
+        lenient().when(reliableEventProcessor.process(any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    Supplier<?> action = invocation.getArgument(2);
+                    return action.get();
+                });
     }
 
     @Test
