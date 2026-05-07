@@ -52,6 +52,26 @@ class EntityLifecycleTest {
     }
 
     @Test
+    void bookingStatusAuditLogPrePersistShouldSetCreatedAt() {
+        BookingStatusAuditLog auditLog = new BookingStatusAuditLog();
+
+        auditLog.prePersist();
+
+        assertNotNull(auditLog.getCreatedAt());
+    }
+
+    @Test
+    void bookingStatusAuditLogPrePersistShouldKeepExistingCreatedAt() {
+        BookingStatusAuditLog auditLog = new BookingStatusAuditLog();
+        OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC).minusHours(1);
+        auditLog.setCreatedAt(createdAt);
+
+        auditLog.prePersist();
+
+        assertEquals(createdAt, auditLog.getCreatedAt());
+    }
+
+    @Test
     void bookingItemPrePersistShouldSetCreatedAtWhenNull() {
         BookingItem bookingItem = new BookingItem();
 

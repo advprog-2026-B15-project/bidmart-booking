@@ -22,15 +22,18 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final BookingItemRepository bookingItemRepository;
     private final ShipmentRepository shipmentRepository;
+    private final BookingStatusAuditLogService auditLogService;
 
     public BookingService(
             BookingRepository bookingRepository,
             BookingItemRepository bookingItemRepository,
-            ShipmentRepository shipmentRepository
+            ShipmentRepository shipmentRepository,
+            BookingStatusAuditLogService auditLogService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
         this.shipmentRepository = shipmentRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional(readOnly = true)
@@ -75,6 +78,14 @@ public class BookingService {
         Booking savedBooking = bookingRepository.save(booking);
         createBookingItem(savedBooking, listingId, itemName, quantity, finalPrice);
         createShipment(savedBooking);
+        auditLogService.recordStatusChange(
+                savedBooking,
+                null,
+                BookingStatus.CREATED,
+                "system",
+                "SYSTEM",
+                "BOOKING_CREATED_FROM_WINNER_EVENT"
+        );
 
         return savedBooking;
     }
@@ -96,7 +107,16 @@ public class BookingService {
 
         booking.setStatus(nextStatus);
         applyLifecycleTimestamps(booking, nextStatus);
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        auditLogService.recordStatusChange(
+                savedBooking,
+                currentStatus,
+                nextStatus,
+                "system",
+                "SYSTEM",
+                "BOOKING_STATUS_TRANSITION"
+        );
+        return savedBooking;
     }
 
     @Transactional
@@ -134,16 +154,33 @@ public class BookingService {
         }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
+        BookingStatus previousBookingStatus = booking.getStatus();
+        BookingStatus nextBookingStatus = null;
+
         if (nextStatus == ShipmentStatus.SHIPPED && shipment.getShippedAt() == null) {
             shipment.setShippedAt(now);
-            booking.setStatus(BookingStatus.SHIPPED);
+            nextBookingStatus = BookingStatus.SHIPPED;
         }
         if (nextStatus == ShipmentStatus.DELIVERED && shipment.getDeliveredAt() == null) {
             shipment.setDeliveredAt(now);
-            booking.setStatus(BookingStatus.DELIVERED);
+            nextBookingStatus = BookingStatus.DELIVERED;
         }
 
-        bookingRepository.save(booking);
+        if (nextBookingStatus != null) {
+            booking.setStatus(nextBookingStatus);
+        }
+
+        Booking savedBooking = bookingRepository.save(booking);
+        if (nextBookingStatus != null) {
+            auditLogService.recordStatusChange(
+                    savedBooking,
+                    previousBookingStatus,
+                    nextBookingStatus,
+                    sellerUserId,
+                    "SELLER",
+                    "SHIPMENT_STATUS_UPDATED"
+            );
+        }
         return shipmentRepository.save(shipment);
     }
 
@@ -161,9 +198,19 @@ public class BookingService {
             );
         }
 
+        BookingStatus currentStatus = booking.getStatus();
         booking.setStatus(BookingStatus.COMPLETED);
         applyLifecycleTimestamps(booking, BookingStatus.COMPLETED);
-        return bookingRepository.save(booking);
+        Booking savedBooking = bookingRepository.save(booking);
+        auditLogService.recordStatusChange(
+                savedBooking,
+                currentStatus,
+                BookingStatus.COMPLETED,
+                buyerUserId,
+                "BUYER",
+                "BUYER_CONFIRMED_DELIVERY"
+        );
+        return savedBooking;
     }
 
     private void applyLifecycleTimestamps(Booking booking, BookingStatus nextStatus) {
