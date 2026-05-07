@@ -39,11 +39,23 @@ class BookingServiceTest {
     @Mock
     private ShipmentRepository shipmentRepository;
 
+    @Mock
+    private BookingStatusAuditLogService auditLogService;
+
+    @Mock
+    private RealtimeEventService realtimeEventService;
+
     private BookingService bookingService;
 
     @BeforeEach
     void setUp() {
-        bookingService = new BookingService(bookingRepository, bookingItemRepository, shipmentRepository);
+        bookingService = new BookingService(
+                bookingRepository,
+                bookingItemRepository,
+                shipmentRepository,
+                auditLogService,
+                realtimeEventService
+        );
     }
 
     @Test
@@ -143,6 +155,22 @@ class BookingServiceTest {
         ArgumentCaptor<Shipment> shipmentCaptor = ArgumentCaptor.forClass(Shipment.class);
         verify(shipmentRepository).save(shipmentCaptor.capture());
         assertEquals(ShipmentStatus.PENDING, shipmentCaptor.getValue().getStatus());
+        verify(auditLogService).recordStatusChange(
+                result,
+                null,
+                BookingStatus.CREATED,
+                "system",
+                "SYSTEM",
+                "BOOKING_CREATED_FROM_WINNER_EVENT"
+        );
+        verify(realtimeEventService).publishBookingStatusChange(
+                result,
+                null,
+                BookingStatus.CREATED,
+                "system",
+                "SYSTEM",
+                "BOOKING_CREATED_FROM_WINNER_EVENT"
+        );
     }
 
     @Test
@@ -216,6 +244,22 @@ class BookingServiceTest {
 
         assertEquals(BookingStatus.PAID, result.getStatus());
         assertNotNull(result.getPaidAt());
+        verify(auditLogService).recordStatusChange(
+                result,
+                BookingStatus.CREATED,
+                BookingStatus.PAID,
+                "system",
+                "SYSTEM",
+                "BOOKING_STATUS_TRANSITION"
+        );
+        verify(realtimeEventService).publishBookingStatusChange(
+                result,
+                BookingStatus.CREATED,
+                BookingStatus.PAID,
+                "system",
+                "SYSTEM",
+                "BOOKING_STATUS_TRANSITION"
+        );
     }
 
     @Test
@@ -231,6 +275,14 @@ class BookingServiceTest {
 
         assertEquals(BookingStatus.COMPLETED, result.getStatus());
         assertNotNull(result.getCompletedAt());
+        verify(auditLogService).recordStatusChange(
+                result,
+                BookingStatus.DELIVERED,
+                BookingStatus.COMPLETED,
+                "system",
+                "SYSTEM",
+                "BOOKING_STATUS_TRANSITION"
+        );
     }
 
     @Test
@@ -340,6 +392,22 @@ class BookingServiceTest {
         assertEquals("JNE", result.getCourierName());
         assertNotNull(result.getShippedAt());
         assertEquals(BookingStatus.SHIPPED, booking.getStatus());
+        verify(auditLogService).recordStatusChange(
+                booking,
+                BookingStatus.PAID,
+                BookingStatus.SHIPPED,
+                "seller-600",
+                "SELLER",
+                "SHIPMENT_STATUS_UPDATED"
+        );
+        verify(realtimeEventService).publishBookingStatusChange(
+                booking,
+                BookingStatus.PAID,
+                BookingStatus.SHIPPED,
+                "seller-600",
+                "SELLER",
+                "SHIPMENT_STATUS_UPDATED"
+        );
     }
 
     @Test
@@ -370,6 +438,14 @@ class BookingServiceTest {
         assertEquals(ShipmentStatus.DELIVERED, result.getStatus());
         assertNotNull(result.getDeliveredAt());
         assertEquals(BookingStatus.DELIVERED, booking.getStatus());
+        verify(auditLogService).recordStatusChange(
+                booking,
+                BookingStatus.SHIPPED,
+                BookingStatus.DELIVERED,
+                "seller-601",
+                "SELLER",
+                "SHIPMENT_STATUS_UPDATED"
+        );
     }
 
     @Test
@@ -578,6 +654,22 @@ class BookingServiceTest {
 
         assertEquals(BookingStatus.COMPLETED, result.getStatus());
         assertNotNull(result.getCompletedAt());
+        verify(auditLogService).recordStatusChange(
+                result,
+                BookingStatus.DELIVERED,
+                BookingStatus.COMPLETED,
+                "buyer-700",
+                "BUYER",
+                "BUYER_CONFIRMED_DELIVERY"
+        );
+        verify(realtimeEventService).publishBookingStatusChange(
+                result,
+                BookingStatus.DELIVERED,
+                BookingStatus.COMPLETED,
+                "buyer-700",
+                "BUYER",
+                "BUYER_CONFIRMED_DELIVERY"
+        );
     }
 
     @Test

@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -37,16 +38,24 @@ class NotificationServiceTest {
     @Mock
     private NotificationPreferenceRepository notificationPreferenceRepository;
 
+    @Mock
+    private RealtimeEventService realtimeEventService;
+
     private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
         notificationService = new NotificationService(
                 notificationRepository,
-                notificationPreferenceRepository
+                notificationPreferenceRepository,
+                realtimeEventService
         );
         lenient().when(notificationPreferenceRepository.findByUserId(anyString()))
                 .thenReturn(Optional.empty());
+        lenient().when(notificationRepository.saveAll(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(notificationRepository.save(any(Notification.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -131,6 +140,7 @@ class NotificationServiceTest {
         Notification loser = notifications.get(1);
         assertEquals(NotificationType.LOSE, loser.getType());
         assertEquals("loser-1", loser.getUserId());
+        verify(realtimeEventService).publishNotification(winner);
     }
 
     @Test
@@ -182,6 +192,7 @@ class NotificationServiceTest {
         );
 
         verify(notificationRepository, never()).saveAll(any());
+        verify(realtimeEventService, never()).publishNotification(any());
     }
 
     @Test
@@ -298,6 +309,9 @@ class NotificationServiceTest {
         assertEquals("seller-1", notifications.get(0).getUserId());
         assertEquals(NotificationType.OUTBID, notifications.get(1).getType());
         assertEquals("bidder-1", notifications.get(1).getUserId());
+        verify(realtimeEventService).publishAuctionUpdate(eq("seller-1"), any());
+        verify(realtimeEventService).publishAuctionUpdate(eq("bidder-2"), any());
+        verify(realtimeEventService).publishAuctionUpdate(eq("bidder-1"), any());
     }
 
     @Test
@@ -394,9 +408,6 @@ class NotificationServiceTest {
 
     @Test
     void shouldCreateBalanceConvertedNotification() {
-        Notification notification = new Notification();
-        when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
-
         notificationService.createBalanceConvertedNotification(
                 "buyer-1",
                 "auc-pay",
@@ -410,6 +421,7 @@ class NotificationServiceTest {
         assertEquals("buyer-1", saved.getUserId());
         assertEquals(NotificationType.PAYMENT_CONFIRMED, saved.getType());
         assertEquals("auc-pay", saved.getRelatedAuctionId());
+        verify(realtimeEventService).publishNotification(saved);
     }
 
     @Test
@@ -427,13 +439,11 @@ class NotificationServiceTest {
         );
 
         verify(notificationRepository, never()).save(any(Notification.class));
+        verify(realtimeEventService, never()).publishNotification(any());
     }
 
     @Test
     void shouldCreateBalanceReleasedNotification() {
-        Notification notification = new Notification();
-        when(notificationRepository.save(any(Notification.class))).thenReturn(notification);
-
         notificationService.createBalanceReleasedNotification(
                 "seller-1",
                 "auc-release",
@@ -447,6 +457,7 @@ class NotificationServiceTest {
         assertEquals("seller-1", saved.getUserId());
         assertEquals(NotificationType.BALANCE_RELEASED, saved.getType());
         assertEquals("auc-release", saved.getRelatedAuctionId());
+        verify(realtimeEventService).publishNotification(saved);
     }
 
     @Test
@@ -464,5 +475,6 @@ class NotificationServiceTest {
         );
 
         verify(notificationRepository, never()).save(any(Notification.class));
+        verify(realtimeEventService, never()).publishNotification(any());
     }
 }
