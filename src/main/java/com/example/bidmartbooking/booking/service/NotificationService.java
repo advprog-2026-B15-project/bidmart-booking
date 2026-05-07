@@ -119,14 +119,6 @@ public class NotificationService {
         }
 
         saveNotifications(notifications);
-        publishBidPlacedAuctionUpdates(
-                sellerUserId,
-                bidderUserId,
-                previousHighestBidderUserId,
-                auctionId,
-                bidAmount,
-                safeItemName
-        );
     }
 
     @Transactional
@@ -167,6 +159,14 @@ public class NotificationService {
         }
 
         saveNotifications(notifications);
+        publishBidPlacedAuctionUpdates(
+                sellerUserId,
+                bidderUserId,
+                previousHighestBidderUserId,
+                auctionId,
+                bidAmount,
+                safeItemName
+        );
     }
 
     @Transactional
