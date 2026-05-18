@@ -40,15 +40,15 @@ public class DisputeService {
                         HttpStatus.NOT_FOUND, "Booking not found"
                 ));
 
-        if (booking.getStatus() != BookingStatus.DELIVERED) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Dispute can only be filed after delivery"
-            );
-        }
-
         if (disputeRepository.existsByBookingId(bookingId)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Dispute already exists for this booking"
+            );
+        }
+
+        if (booking.getStatus() != BookingStatus.DELIVERED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Dispute can only be filed after delivery"
             );
         }
 

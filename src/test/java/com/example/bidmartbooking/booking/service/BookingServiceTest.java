@@ -72,6 +72,20 @@ class BookingServiceTest {
     }
 
     @Test
+    void shouldReturnMySellingBookings() {
+        Booking booking = new Booking();
+        booking.setId(12L);
+        booking.setSellerUserId("seller-1");
+        when(bookingRepository.findBySellerUserIdOrderByCreatedAtDesc("seller-1"))
+                .thenReturn(List.of(booking));
+
+        List<Booking> result = bookingService.getMySellingBookings("seller-1");
+
+        assertEquals(1, result.size());
+        assertEquals(12L, result.getFirst().getId());
+    }
+
+    @Test
     void shouldReturnBookingByIdForUser() {
         Booking booking = new Booking();
         booking.setId(10L);

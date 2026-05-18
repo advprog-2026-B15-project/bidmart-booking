@@ -3,11 +3,14 @@ package com.example.bidmartbooking.booking.controller;
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.BookingItem;
 import com.example.bidmartbooking.booking.model.BookingStatus;
+import com.example.bidmartbooking.booking.model.Dispute;
+import com.example.bidmartbooking.booking.model.DisputeStatus;
 import com.example.bidmartbooking.booking.model.Shipment;
 import com.example.bidmartbooking.booking.model.ShipmentStatus;
 import com.example.bidmartbooking.booking.repository.BookingItemRepository;
 import com.example.bidmartbooking.booking.repository.ShipmentRepository;
 import com.example.bidmartbooking.booking.service.BookingService;
+import com.example.bidmartbooking.booking.service.DisputeService;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -21,9 +24,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -41,6 +47,9 @@ class BookingControllerWebMvcTest {
 
     @MockBean
     private ShipmentRepository shipmentRepository;
+
+    @MockBean
+    private DisputeService disputeService;
 
     @Test
     void shouldGetMyBookings() throws Exception {
@@ -190,5 +199,105 @@ class BookingControllerWebMvcTest {
                         .header("X-User-Id", "seller-5")
                         .header("X-User-Role", "SELLER"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldGetMySellingBookings() throws Exception {
+        Booking booking = new Booking();
+        booking.setId(10L);
+        booking.setAuctionId("auc-10");
+        booking.setListingId("lst-10");
+        booking.setBuyerUserId("buyer-10");
+        booking.setSellerUserId("seller-10");
+        booking.setStatus(BookingStatus.SHIPPED);
+        booking.setTotalAmount(200000L);
+        booking.setCurrency("IDR");
+        booking.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        when(bookingService.getMySellingBookings("seller-10")).thenReturn(List.of(booking));
+
+        mockMvc.perform(get("/api/bookings/selling").header("X-User-Id", "seller-10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(10))
+                .andExpect(jsonPath("$[0].sellerUserId").value("seller-10"))
+                .andExpect(jsonPath("$[0].status").value("SHIPPED"));
+    }
+
+    @Test
+    void shouldFileDisputeAsBuyer() throws Exception {
+        Booking booking = new Booking();
+        booking.setId(20L);
+        booking.setBuyerUserId("buyer-20");
+        booking.setSellerUserId("seller-20");
+        booking.setStatus(BookingStatus.DISPUTED);
+
+        Dispute dispute = new Dispute();
+        dispute.setId(1L);
+        dispute.setBooking(booking);
+        dispute.setFiledByUserId("buyer-20");
+        dispute.setReason("Barang tidak sesuai deskripsi produk");
+        dispute.setStatus(DisputeStatus.OPEN);
+        dispute.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        dispute.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        when(disputeService.fileDispute(20L, "buyer-20", "Barang tidak sesuai deskripsi produk"))
+                .thenReturn(dispute);
+
+        mockMvc.perform(post("/api/bookings/20/dispute")
+                        .header("X-User-Id", "buyer-20")
+                        .header("X-User-Role", "BUYER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Barang tidak sesuai deskripsi produk\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.filedByUserId").value("buyer-20"))
+                .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void shouldRejectDisputeWhenRoleIsNotBuyer() throws Exception {
+        mockMvc.perform(post("/api/bookings/20/dispute")
+                        .header("X-User-Id", "seller-20")
+                        .header("X-User-Role", "SELLER")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Barang tidak sesuai deskripsi produk\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldGetDisputeForBooking() throws Exception {
+        Booking booking = new Booking();
+        booking.setId(21L);
+        booking.setBuyerUserId("buyer-21");
+        booking.setSellerUserId("seller-21");
+        booking.setStatus(BookingStatus.DISPUTED);
+
+        Dispute dispute = new Dispute();
+        dispute.setId(2L);
+        dispute.setBooking(booking);
+        dispute.setFiledByUserId("buyer-21");
+        dispute.setReason("Produk cacat saat tiba");
+        dispute.setStatus(DisputeStatus.OPEN);
+        dispute.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        dispute.setUpdatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        when(disputeService.getDisputeForBooking(21L, "buyer-21")).thenReturn(dispute);
+
+        mockMvc.perform(get("/api/bookings/21/dispute")
+                        .header("X-User-Id", "buyer-21"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.reason").value("Produk cacat saat tiba"))
+                .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    void shouldReturn403WhenGetDisputeForbidden() throws Exception {
+        when(disputeService.getDisputeForBooking(anyLong(), anyString()))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied"));
+
+        mockMvc.perform(get("/api/bookings/22/dispute")
+                        .header("X-User-Id", "stranger"))
+                .andExpect(status().isForbidden());
     }
 }
