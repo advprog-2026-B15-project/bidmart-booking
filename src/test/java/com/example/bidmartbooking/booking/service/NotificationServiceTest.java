@@ -525,6 +525,25 @@ class NotificationServiceTest {
     }
 
     @Test
+    void shouldCreateDisputeFiledNotification() {
+        Booking booking = new Booking();
+        booking.setId(30L);
+        booking.setAuctionId("auc-dispute");
+
+        notificationService.createDisputeFiledNotification("seller-30", booking);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+
+        assertEquals("seller-30", saved.getUserId());
+        assertEquals(NotificationType.DISPUTE_FILED, saved.getType());
+        assertEquals("auc-dispute", saved.getRelatedAuctionId());
+        assertEquals(booking, saved.getRelatedBooking());
+        verify(realtimeEventService).publishNotification(saved);
+    }
+
+    @Test
     void shouldSkipDeliveredNotificationWhenInAppDisabled() {
         NotificationPreference disabledPreference = new NotificationPreference();
         disabledPreference.setInAppEnabled(false);

@@ -226,6 +226,18 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    public void createDisputeFiledNotification(String sellerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                sellerUserId,
+                NotificationType.DISPUTE_FILED,
+                "A dispute has been filed",
+                "The buyer has filed a dispute for your order. Please check the details.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
     private void addIfInAppEnabled(
             List<Notification> notifications,
             String userId,

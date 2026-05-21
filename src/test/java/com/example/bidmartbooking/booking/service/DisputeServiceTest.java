@@ -38,6 +38,9 @@ class DisputeServiceTest {
     @Mock
     private RealtimeEventService realtimeEventService;
 
+    @Mock
+    private NotificationService notificationService;
+
     private DisputeService disputeService;
 
     @BeforeEach
@@ -46,7 +49,8 @@ class DisputeServiceTest {
                 disputeRepository,
                 bookingRepository,
                 auditLogService,
-                realtimeEventService
+                realtimeEventService,
+                notificationService
         );
     }
 
@@ -105,6 +109,24 @@ class DisputeServiceTest {
                 org.mockito.ArgumentMatchers.eq("buyer-11"),
                 org.mockito.ArgumentMatchers.eq("BUYER"),
                 org.mockito.ArgumentMatchers.eq("BUYER_FILED_DISPUTE")
+        );
+    }
+
+    @Test
+    void shouldNotifySellerWhenDisputeFiled() {
+        Booking booking = deliveredBooking(12L, "buyer-12", "seller-12");
+
+        when(bookingRepository.findByIdAndBuyerUserId(12L, "buyer-12"))
+                .thenReturn(Optional.of(booking));
+        when(disputeRepository.existsByBookingId(12L)).thenReturn(false);
+        when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(disputeRepository.save(any(Dispute.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        disputeService.fileDispute(12L, "buyer-12", "Barang tidak sesuai");
+
+        verify(notificationService).createDisputeFiledNotification(
+                org.mockito.ArgumentMatchers.eq("seller-12"),
+                any(Booking.class)
         );
     }
 

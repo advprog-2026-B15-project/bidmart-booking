@@ -9,5 +9,6 @@ public enum NotificationType {
     BALANCE_RELEASED,
     SHIPPED,
     DELIVERED,
+    DISPUTE_FILED,
     INFO
 }
