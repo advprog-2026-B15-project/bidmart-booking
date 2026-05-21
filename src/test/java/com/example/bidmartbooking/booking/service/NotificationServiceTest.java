@@ -469,6 +469,80 @@ class NotificationServiceTest {
     }
 
     @Test
+    void shouldCreateShippedNotification() {
+        Booking booking = new Booking();
+        booking.setId(20L);
+        booking.setAuctionId("auc-shipped");
+
+        notificationService.createShippedNotification("buyer-20", booking);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+
+        assertEquals("buyer-20", saved.getUserId());
+        assertEquals(NotificationType.SHIPPED, saved.getType());
+        assertEquals("auc-shipped", saved.getRelatedAuctionId());
+        assertEquals(booking, saved.getRelatedBooking());
+        verify(realtimeEventService).publishNotification(saved);
+    }
+
+    @Test
+    void shouldCreateDeliveredNotification() {
+        Booking booking = new Booking();
+        booking.setId(21L);
+        booking.setAuctionId("auc-delivered");
+
+        notificationService.createDeliveredNotification("buyer-21", booking);
+
+        ArgumentCaptor<Notification> captor = ArgumentCaptor.forClass(Notification.class);
+        verify(notificationRepository).save(captor.capture());
+        Notification saved = captor.getValue();
+
+        assertEquals("buyer-21", saved.getUserId());
+        assertEquals(NotificationType.DELIVERED, saved.getType());
+        assertEquals("auc-delivered", saved.getRelatedAuctionId());
+        assertEquals(booking, saved.getRelatedBooking());
+        verify(realtimeEventService).publishNotification(saved);
+    }
+
+    @Test
+    void shouldSkipShippedNotificationWhenInAppDisabled() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("buyer-off"))
+                .thenReturn(Optional.of(disabledPreference));
+
+        Booking booking = new Booking();
+        booking.setId(22L);
+        booking.setAuctionId("auc-shipped-off");
+
+        notificationService.createShippedNotification("buyer-off", booking);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+        verify(realtimeEventService, never()).publishNotification(any());
+    }
+
+    @Test
+    void shouldSkipDeliveredNotificationWhenInAppDisabled() {
+        NotificationPreference disabledPreference = new NotificationPreference();
+        disabledPreference.setInAppEnabled(false);
+
+        when(notificationPreferenceRepository.findByUserId("buyer-off"))
+                .thenReturn(Optional.of(disabledPreference));
+
+        Booking booking = new Booking();
+        booking.setId(23L);
+        booking.setAuctionId("auc-delivered-off");
+
+        notificationService.createDeliveredNotification("buyer-off", booking);
+
+        verify(notificationRepository, never()).save(any(Notification.class));
+        verify(realtimeEventService, never()).publishNotification(any());
+    }
+
+    @Test
     void shouldSkipBalanceReleasedNotificationWhenInAppDisabled() {
         NotificationPreference disabledPreference = new NotificationPreference();
         disabledPreference.setInAppEnabled(false);

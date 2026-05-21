@@ -24,19 +24,22 @@ public class BookingService {
     private final ShipmentRepository shipmentRepository;
     private final BookingStatusAuditLogService auditLogService;
     private final RealtimeEventService realtimeEventService;
+    private final NotificationService notificationService;
 
     public BookingService(
             BookingRepository bookingRepository,
             BookingItemRepository bookingItemRepository,
             ShipmentRepository shipmentRepository,
             BookingStatusAuditLogService auditLogService,
-            RealtimeEventService realtimeEventService
+            RealtimeEventService realtimeEventService,
+            NotificationService notificationService
     ) {
         this.bookingRepository = bookingRepository;
         this.bookingItemRepository = bookingItemRepository;
         this.shipmentRepository = shipmentRepository;
         this.auditLogService = auditLogService;
         this.realtimeEventService = realtimeEventService;
+        this.notificationService = notificationService;
     }
 
     @Transactional(readOnly = true)
@@ -188,6 +191,11 @@ public class BookingService {
                     "SELLER",
                     "SHIPMENT_STATUS_UPDATED"
             );
+            if (nextBookingStatus == BookingStatus.SHIPPED) {
+                notificationService.createShippedNotification(savedBooking.getBuyerUserId(), savedBooking);
+            } else if (nextBookingStatus == BookingStatus.DELIVERED) {
+                notificationService.createDeliveredNotification(savedBooking.getBuyerUserId(), savedBooking);
+            }
         }
         return shipmentRepository.save(shipment);
     }

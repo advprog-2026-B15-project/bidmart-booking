@@ -45,6 +45,9 @@ class BookingServiceTest {
     @Mock
     private RealtimeEventService realtimeEventService;
 
+    @Mock
+    private NotificationService notificationService;
+
     private BookingService bookingService;
 
     @BeforeEach
@@ -54,7 +57,8 @@ class BookingServiceTest {
                 bookingItemRepository,
                 shipmentRepository,
                 auditLogService,
-                realtimeEventService
+                realtimeEventService,
+                notificationService
         );
     }
 
@@ -422,6 +426,7 @@ class BookingServiceTest {
                 "SELLER",
                 "SHIPMENT_STATUS_UPDATED"
         );
+        verify(notificationService).createShippedNotification(any(), any());
     }
 
     @Test
@@ -460,6 +465,7 @@ class BookingServiceTest {
                 "SELLER",
                 "SHIPMENT_STATUS_UPDATED"
         );
+        verify(notificationService).createDeliveredNotification(any(), any());
     }
 
     @Test

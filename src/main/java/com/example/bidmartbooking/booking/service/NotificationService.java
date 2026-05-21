@@ -202,6 +202,30 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    public void createShippedNotification(String buyerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                buyerUserId,
+                NotificationType.SHIPPED,
+                "Your item has been shipped",
+                "Your order has been shipped. Track your package for updates.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
+    @Transactional
+    public void createDeliveredNotification(String buyerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                buyerUserId,
+                NotificationType.DELIVERED,
+                "Your item has been delivered",
+                "Your order has been marked as delivered by the seller.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
     private void addIfInAppEnabled(
             List<Notification> notifications,
             String userId,
@@ -243,6 +267,17 @@ public class NotificationService {
             String message,
             String auctionId
     ) {
+        saveNotificationIfInAppEnabled(userId, type, title, message, auctionId, null);
+    }
+
+    private void saveNotificationIfInAppEnabled(
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId,
+            Booking relatedBooking
+    ) {
         if (!isInAppEnabled(userId)) {
             return;
         }
@@ -253,6 +288,7 @@ public class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setRelatedAuctionId(auctionId);
+        notification.setRelatedBooking(relatedBooking);
         Notification savedNotification = notificationRepository.save(notification);
         realtimeEventService.publishNotification(savedNotification);
     }
