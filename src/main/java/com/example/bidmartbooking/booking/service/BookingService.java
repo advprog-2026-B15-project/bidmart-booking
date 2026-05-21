@@ -45,6 +45,11 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
+    public List<Booking> getMySellingBookings(String sellerId) {
+        return bookingRepository.findBySellerUserIdOrderByCreatedAtDesc(sellerId);
+    }
+
+    @Transactional(readOnly = true)
     public Booking getBookingByIdForUser(Long id, String userId) {
         return bookingRepository.findByIdAndBuyerUserId(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(
