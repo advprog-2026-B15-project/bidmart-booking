@@ -1,6 +1,7 @@
 package com.example.bidmartbooking.booking.event;
 
 import com.example.bidmartbooking.booking.model.Booking;
+import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
@@ -544,6 +545,10 @@ class BookingEventConsumerTest {
     void shouldHandleBalanceConvertedEvent() {
         EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
 
+        Booking booking = new Booking();
+        booking.setId(1L);
+        when(bookingService.transitionBookingStatus(1L, BookingStatus.PAID)).thenReturn(booking);
+
         bookingEventConsumer.handleBalanceConverted(event);
 
         verify(notificationService).createBalanceConvertedNotification(
@@ -551,7 +556,18 @@ class BookingEventConsumerTest {
                 "auc-pay",
                 500000L
         );
+        verify(bookingService).transitionBookingStatus(1L, BookingStatus.PAID);
         verify(processedEventService).markProcessed("evt-balance-converted-1", "BalanceConverted");
+    }
+
+    @Test
+    void shouldSkipBookingTransitionWhenBalanceConvertedHasNoBookingId() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        event.getPayload().setBookingId(null);
+
+        bookingEventConsumer.handleBalanceConverted(event);
+
+        verify(bookingService, never()).transitionBookingStatus(any(), any());
     }
 
     @Test
@@ -824,7 +840,7 @@ class BookingEventConsumerTest {
         event.setEventId("evt-balance-converted-1");
 
         BalanceConvertedPayload payload = new BalanceConvertedPayload();
-        payload.setBookingId("bkg-1");
+        payload.setBookingId("1");
         payload.setAuctionId("auc-pay");
         payload.setUserId("buyer-1");
         payload.setAmount(500000L);
