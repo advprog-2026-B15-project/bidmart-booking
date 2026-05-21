@@ -1,6 +1,7 @@
 package com.example.bidmartbooking.booking.event;
 
 import com.example.bidmartbooking.booking.model.Booking;
+import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -74,7 +76,7 @@ class BookingEventConsumerTest {
 
         ArgumentCaptor<List<String>> losersCaptor = ArgumentCaptor.forClass(List.class);
         verify(notificationService).createWinLoseNotifications(
-                any(), losersCaptor.capture(), any(), any()
+                any(), losersCaptor.capture(), any(), any(), any()
         );
         assertEquals(0, losersCaptor.getValue().size());
         verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
@@ -221,10 +223,11 @@ class BookingEventConsumerTest {
 
         assertNotNull(result);
         verify(notificationService).createWinLoseNotifications(
-                "winner-1",
-                List.of("loser-1", "loser-2"),
-                "auc-1",
-                5000L
+                eq("winner-1"),
+                eq(List.of("loser-1", "loser-2")),
+                eq("auc-1"),
+                eq(5000L),
+                any(Booking.class)
         );
         verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
     }
@@ -241,7 +244,7 @@ class BookingEventConsumerTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any()
         );
         verify(notificationService, never()).createWinLoseNotifications(
-                any(), any(), any(), any()
+                any(), any(), any(), any(), any()
         );
         verify(processedEventService, never()).markProcessed(any(), any());
     }
@@ -544,6 +547,10 @@ class BookingEventConsumerTest {
     void shouldHandleBalanceConvertedEvent() {
         EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
 
+        Booking booking = new Booking();
+        booking.setId(1L);
+        when(bookingService.transitionBookingStatus(1L, BookingStatus.PAID)).thenReturn(booking);
+
         bookingEventConsumer.handleBalanceConverted(event);
 
         verify(notificationService).createBalanceConvertedNotification(
@@ -551,7 +558,18 @@ class BookingEventConsumerTest {
                 "auc-pay",
                 500000L
         );
+        verify(bookingService).transitionBookingStatus(1L, BookingStatus.PAID);
         verify(processedEventService).markProcessed("evt-balance-converted-1", "BalanceConverted");
+    }
+
+    @Test
+    void shouldSkipBookingTransitionWhenBalanceConvertedHasNoBookingId() {
+        EventEnvelope<BalanceConvertedPayload> event = buildValidBalanceConvertedEvent();
+        event.getPayload().setBookingId(null);
+
+        bookingEventConsumer.handleBalanceConverted(event);
+
+        verify(bookingService, never()).transitionBookingStatus(any(), any());
     }
 
     @Test
@@ -824,7 +842,7 @@ class BookingEventConsumerTest {
         event.setEventId("evt-balance-converted-1");
 
         BalanceConvertedPayload payload = new BalanceConvertedPayload();
-        payload.setBookingId("bkg-1");
+        payload.setBookingId("1");
         payload.setAuctionId("auc-pay");
         payload.setUserId("buyer-1");
         payload.setAmount(500000L);

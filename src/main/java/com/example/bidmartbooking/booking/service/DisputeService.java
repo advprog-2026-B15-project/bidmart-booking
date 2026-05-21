@@ -20,17 +20,20 @@ public class DisputeService {
     private final BookingRepository bookingRepository;
     private final BookingStatusAuditLogService auditLogService;
     private final RealtimeEventService realtimeEventService;
+    private final NotificationService notificationService;
 
     public DisputeService(
             DisputeRepository disputeRepository,
             BookingRepository bookingRepository,
             BookingStatusAuditLogService auditLogService,
-            RealtimeEventService realtimeEventService
+            RealtimeEventService realtimeEventService,
+            NotificationService notificationService
     ) {
         this.disputeRepository = disputeRepository;
         this.bookingRepository = bookingRepository;
         this.auditLogService = auditLogService;
         this.realtimeEventService = realtimeEventService;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -79,7 +82,9 @@ public class DisputeService {
         dispute.setFiledByUserId(buyerUserId);
         dispute.setReason(reason);
         dispute.setStatus(DisputeStatus.OPEN);
-        return disputeRepository.save(dispute);
+        Dispute savedDispute = disputeRepository.save(dispute);
+        notificationService.createDisputeFiledNotification(booking.getSellerUserId(), booking);
+        return savedDispute;
     }
 
     @Transactional(readOnly = true)

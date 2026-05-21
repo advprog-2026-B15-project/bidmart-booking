@@ -1,6 +1,7 @@
 package com.example.bidmartbooking.booking.event;
 
 import com.example.bidmartbooking.booking.model.Booking;
+import com.example.bidmartbooking.booking.model.BookingStatus;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
@@ -65,7 +66,8 @@ public class BookingEventConsumer {
                     payload.getWinnerUserId(),
                     loserUserIds,
                     payload.getAuctionId(),
-                    payload.getFinalPrice()
+                    payload.getFinalPrice(),
+                    booking
             );
 
             processedEventService.markProcessed(event.getEventId(), WINNER_DETERMINED);
@@ -118,6 +120,11 @@ public class BookingEventConsumer {
                     payload.getAuctionId(),
                     payload.getAmount()
             );
+            if (payload.getBookingId() != null && !payload.getBookingId().isBlank()) {
+                bookingService.transitionBookingStatus(
+                        Long.parseLong(payload.getBookingId()), BookingStatus.PAID
+                );
+            }
             processedEventService.markProcessed(event.getEventId(), BALANCE_CONVERTED);
             return null;
         });

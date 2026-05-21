@@ -7,5 +7,8 @@ public enum NotificationType {
     OUTBID,
     PAYMENT_CONFIRMED,
     BALANCE_RELEASED,
+    SHIPPED,
+    DELIVERED,
+    DISPUTE_FILED,
     INFO
 }

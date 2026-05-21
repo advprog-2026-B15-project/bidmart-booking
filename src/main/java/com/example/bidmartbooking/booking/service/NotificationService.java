@@ -1,6 +1,7 @@
 package com.example.bidmartbooking.booking.service;
 
 import com.example.bidmartbooking.booking.dto.RealtimeAuctionUpdateResponse;
+import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
@@ -94,7 +95,8 @@ public class NotificationService {
             String winnerUserId,
             List<String> loserUserIds,
             String auctionId,
-            Long finalPrice
+            Long finalPrice,
+            Booking booking
     ) {
         List<Notification> notifications = new ArrayList<>();
 
@@ -104,7 +106,8 @@ public class NotificationService {
                 NotificationType.WIN,
                 "You won the auction",
                 "You won auction " + auctionId + " with final price IDR " + finalPrice,
-                auctionId
+                auctionId,
+                booking
         );
 
         for (String loserUserId : loserUserIds) {
@@ -199,6 +202,42 @@ public class NotificationService {
         );
     }
 
+    @Transactional
+    public void createShippedNotification(String buyerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                buyerUserId,
+                NotificationType.SHIPPED,
+                "Your item has been shipped",
+                "Your order has been shipped. Track your package for updates.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
+    @Transactional
+    public void createDeliveredNotification(String buyerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                buyerUserId,
+                NotificationType.DELIVERED,
+                "Your item has been delivered",
+                "Your order has been marked as delivered by the seller.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
+    @Transactional
+    public void createDisputeFiledNotification(String sellerUserId, Booking booking) {
+        saveNotificationIfInAppEnabled(
+                sellerUserId,
+                NotificationType.DISPUTE_FILED,
+                "A dispute has been filed",
+                "The buyer has filed a dispute for your order. Please check the details.",
+                booking.getAuctionId(),
+                booking
+        );
+    }
+
     private void addIfInAppEnabled(
             List<Notification> notifications,
             String userId,
@@ -206,6 +245,18 @@ public class NotificationService {
             String title,
             String message,
             String auctionId
+    ) {
+        addIfInAppEnabled(notifications, userId, type, title, message, auctionId, null);
+    }
+
+    private void addIfInAppEnabled(
+            List<Notification> notifications,
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId,
+            Booking relatedBooking
     ) {
         if (!isInAppEnabled(userId)) {
             return;
@@ -217,6 +268,7 @@ public class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setRelatedAuctionId(auctionId);
+        notification.setRelatedBooking(relatedBooking);
         notifications.add(notification);
     }
 
@@ -227,6 +279,17 @@ public class NotificationService {
             String message,
             String auctionId
     ) {
+        saveNotificationIfInAppEnabled(userId, type, title, message, auctionId, null);
+    }
+
+    private void saveNotificationIfInAppEnabled(
+            String userId,
+            NotificationType type,
+            String title,
+            String message,
+            String auctionId,
+            Booking relatedBooking
+    ) {
         if (!isInAppEnabled(userId)) {
             return;
         }
@@ -237,6 +300,7 @@ public class NotificationService {
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setRelatedAuctionId(auctionId);
+        notification.setRelatedBooking(relatedBooking);
         Notification savedNotification = notificationRepository.save(notification);
         realtimeEventService.publishNotification(savedNotification);
     }
