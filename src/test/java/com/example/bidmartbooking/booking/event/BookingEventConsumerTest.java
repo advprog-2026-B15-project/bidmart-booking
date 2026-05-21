@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -75,7 +76,7 @@ class BookingEventConsumerTest {
 
         ArgumentCaptor<List<String>> losersCaptor = ArgumentCaptor.forClass(List.class);
         verify(notificationService).createWinLoseNotifications(
-                any(), losersCaptor.capture(), any(), any()
+                any(), losersCaptor.capture(), any(), any(), any()
         );
         assertEquals(0, losersCaptor.getValue().size());
         verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
@@ -222,10 +223,11 @@ class BookingEventConsumerTest {
 
         assertNotNull(result);
         verify(notificationService).createWinLoseNotifications(
-                "winner-1",
-                List.of("loser-1", "loser-2"),
-                "auc-1",
-                5000L
+                eq("winner-1"),
+                eq(List.of("loser-1", "loser-2")),
+                eq("auc-1"),
+                eq(5000L),
+                any(Booking.class)
         );
         verify(processedEventService).markProcessed("evt-1", "WinnerDetermined");
     }
@@ -242,7 +244,7 @@ class BookingEventConsumerTest {
                 any(), any(), any(), any(), any(), any(), any(), any(), any()
         );
         verify(notificationService, never()).createWinLoseNotifications(
-                any(), any(), any(), any()
+                any(), any(), any(), any(), any()
         );
         verify(processedEventService, never()).markProcessed(any(), any());
     }

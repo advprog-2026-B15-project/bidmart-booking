@@ -1,5 +1,6 @@
 package com.example.bidmartbooking.booking.service;
 
+import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.Notification;
 import com.example.bidmartbooking.booking.model.NotificationPreference;
 import com.example.bidmartbooking.booking.model.NotificationType;
@@ -120,11 +121,15 @@ class NotificationServiceTest {
 
     @Test
     void shouldCreateWinAndLoseNotifications() {
+        Booking booking = new Booking();
+        booking.setId(10L);
+
         notificationService.createWinLoseNotifications(
                 "winner-1",
                 List.of("loser-1", "loser-2"),
                 "auc-1",
-                900000L
+                900000L,
+                booking
         );
 
         ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
@@ -136,6 +141,7 @@ class NotificationServiceTest {
         Notification winner = notifications.get(0);
         assertEquals("winner-1", winner.getUserId());
         assertEquals(NotificationType.WIN, winner.getType());
+        assertEquals(booking, winner.getRelatedBooking());
 
         Notification loser = notifications.get(1);
         assertEquals(NotificationType.LOSE, loser.getType());
@@ -162,7 +168,8 @@ class NotificationServiceTest {
                 "winner-off",
                 List.of("loser-off", "loser-on"),
                 "auc-pref-1",
-                910000L
+                910000L,
+                null
         );
 
         ArgumentCaptor<List<Notification>> captor = ArgumentCaptor.forClass(List.class);
@@ -188,7 +195,8 @@ class NotificationServiceTest {
                 "winner-off",
                 List.of("loser-off"),
                 "auc-pref-2",
-                920000L
+                920000L,
+                null
         );
 
         verify(notificationRepository, never()).saveAll(any());

@@ -66,7 +66,8 @@ public class BookingEventConsumer {
                     payload.getWinnerUserId(),
                     loserUserIds,
                     payload.getAuctionId(),
-                    payload.getFinalPrice()
+                    payload.getFinalPrice(),
+                    booking
             );
 
             processedEventService.markProcessed(event.getEventId(), WINNER_DETERMINED);
