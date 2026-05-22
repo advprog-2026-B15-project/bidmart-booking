@@ -1,6 +1,6 @@
 # AWS EC2 Continuous Deployment
 
-This repository deploys to an AWS EC2 instance through GitHub Actions.
+This repository deploys to an AWS EC2 instance through GitHub Actions. The Docker image is built on the GitHub-hosted runner, then copied to EC2 and loaded with `docker load`. EC2 only runs the already-built image, so deployment does not spend CPU and memory compiling the app on the server.
 
 ## GitHub Configuration
 

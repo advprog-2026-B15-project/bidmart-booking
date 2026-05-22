@@ -1,0 +1,30 @@
+
+                                          Java Methods that Executes the Most
+
+Method                                                                                                  Samples Percent
+------------------------------------------------------------------------------------------------------- ------- -------
+java.util.regex.Pattern$CharPropertyGreedy.match(Matcher, int, CharSequence)                                  7  14.89%
+java.util.concurrent.ConcurrentHashMap.get(Object)                                                            3   6.38%
+java.util.stream.ReferencePipeline$$Lambda+0x00000070010b8cd0.1663738275.apply(int)                           1   2.13%
+org.hibernate.generator.values.internal.GeneratedValuesHelper.getGeneratedValues(...)                         1   2.13%
+jdk.jfr.internal.jfc.model.XmlElement.constraints()                                                           1   2.13%
+jdk.internal.loader.URLClassPath$JarLoader.ensureOpen()                                                       1   2.13%
+org.h2.command.Parser.readIdentifier()                                                                        1   2.13%
+org.springframework.beans.factory.support.AbstractBeanDefinition.<init>(BeanDefinition)                       1   2.13%
+java.lang.NamedPackage.<init>(String, Module)                                                                 1   2.13%
+java.util.zip.ZipFile$Source.getEntryPos(String, boolean)                                                     1   2.13%
+org.h2.command.query.Optimizer.testPlan(TableFilter[])                                                        1   2.13%
+org.springframework.core.annotation.AnnotationTypeMappings.size()                                             1   2.13%
+org.springframework.web.util.HierarchicalUriComponents.encodeUriComponent(...)                                1   2.13%
+sun.reflect.generics.parser.SignatureParser.parseFieldTypeSignature()                                         1   2.13%
+jdk.internal.jimage.ImageStringsReader.unmaskedHashCode(String, int)                                          1   2.13%
+java.util.EnumMap.get(Object)                                                                                 1   2.13%
+java.lang.String.equals(Object)                                                                               1   2.13%
+java.util.Arrays.copyOf(byte[], int)                                                                          1   2.13%
+org.h2.command.query.Select$LazyResultQueryFlat.fetchNextRow()                                                1   2.13%
+org.hibernate.sql.results.graph.entity.internal.EntityInitializerImpl.<init>(...)                             1   2.13%
+java.util.stream.FindOps$FindOp.evaluateSequential(PipelineHelper, Spliterator)                               1   2.13%
+java.util.jar.JarFile.ensureInitialization()                                                                  1   2.13%
+java.lang.invoke.MemberName.clone()                                                                           1   2.13%
+org.hibernate.internal.util.StringHelper.isEmpty(String)                                                      1   2.13%
+sun.reflect.generics.parser.SignatureParser.parseTypeSignature()                                              1   2.13%

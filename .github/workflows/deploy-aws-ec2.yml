@@ -39,6 +39,12 @@ jobs:
       - name: Run checks and coverage verification
         run: ./gradlew clean check jacocoTestCoverageVerification
 
+      - name: Build Docker image
+        run: docker build -t bidmart-booking:${{ github.sha }} .
+
+      - name: Save Docker image
+        run: docker save bidmart-booking:${{ github.sha }} -o bidmart-booking-image.tar
+
       - name: Validate deployment secrets
         shell: bash
         run: |
@@ -57,14 +63,7 @@ jobs:
       - name: Package application
         shell: bash
         run: |
-          tar \
-            --exclude='.git' \
-            --exclude='.gradle' \
-            --exclude='build' \
-            --exclude='.claude' \
-            --exclude='bidmart-booking.tar.gz' \
-            --exclude='deploy/aws/.env' \
-            -czf bidmart-booking.tar.gz .
+          tar -czf bidmart-booking-deploy.tar.gz deploy/aws
 
       - name: Upload package to EC2
         shell: bash
@@ -72,8 +71,9 @@ jobs:
           scp \
             -P "$AWS_EC2_SSH_PORT" \
             -i ~/.ssh/bidmart-booking.pem \
-            bidmart-booking.tar.gz \
-            "$AWS_EC2_USER@$AWS_EC2_HOST:/tmp/bidmart-booking.tar.gz"
+            bidmart-booking-deploy.tar.gz \
+            bidmart-booking-image.tar \
+            "$AWS_EC2_USER@$AWS_EC2_HOST:/tmp/"
 
       - name: Deploy on EC2
         shell: bash
@@ -84,8 +84,14 @@ jobs:
             "$AWS_EC2_USER@$AWS_EC2_HOST" \
             "set -euo pipefail
              mkdir -p '$AWS_EC2_DEPLOY_DIR'
-             tar -xzf /tmp/bidmart-booking.tar.gz -C '$AWS_EC2_DEPLOY_DIR'
+             tar -xzf /tmp/bidmart-booking-deploy.tar.gz -C '$AWS_EC2_DEPLOY_DIR'
              cd '$AWS_EC2_DEPLOY_DIR'
              if [ ! -f deploy/aws/.env ]; then cp deploy/aws/.env.example deploy/aws/.env; fi
-             docker compose --env-file deploy/aws/.env -f deploy/aws/docker-compose.yml up -d --build
+             docker load -i /tmp/bidmart-booking-image.tar
+             if grep -q '^APP_IMAGE=' deploy/aws/.env; then
+               sed -i 's|^APP_IMAGE=.*|APP_IMAGE=bidmart-booking:${{ github.sha }}|' deploy/aws/.env
+             else
+               printf '\nAPP_IMAGE=bidmart-booking:${{ github.sha }}\n' >> deploy/aws/.env
+             fi
+             docker compose --env-file deploy/aws/.env -f deploy/aws/docker-compose.yml up -d
              docker image prune -f"
