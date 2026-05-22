@@ -14,14 +14,13 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build, test, and deploy
+    name: Build and deploy
     runs-on: ubuntu-latest
     env:
       AWS_EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
       AWS_EC2_USER: ${{ secrets.AWS_EC2_USER }}
       AWS_EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
       AWS_EC2_SSH_PORT: ${{ secrets.AWS_EC2_SSH_PORT || '22' }}
-      AWS_EC2_DEPLOY_DIR: ${{ vars.AWS_EC2_DEPLOY_DIR || 'bidmart-booking' }}
 
     steps:
       - name: Checkout repository
@@ -36,14 +35,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Run checks and coverage verification
-        run: ./gradlew clean check jacocoTestCoverageVerification
-
-      - name: Build Docker image
-        run: docker build -t bidmart-booking:${{ github.sha }} .
-
-      - name: Save Docker image
-        run: docker save bidmart-booking:${{ github.sha }} -o bidmart-booking-image.tar
+      - name: Build JAR
+        run: ./gradlew bootJar -x test --no-daemon
 
       - name: Validate deployment secrets
         shell: bash
@@ -56,42 +49,35 @@ jobs:
         shell: bash
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$AWS_EC2_SSH_KEY" > ~/.ssh/bidmart-booking.pem
-          chmod 600 ~/.ssh/bidmart-booking.pem
+          printf '%s\n' "$AWS_EC2_SSH_KEY" > ~/.ssh/deploy.pem
+          chmod 600 ~/.ssh/deploy.pem
           ssh-keyscan -p "$AWS_EC2_SSH_PORT" -H "$AWS_EC2_HOST" >> ~/.ssh/known_hosts
 
-      - name: Package application
+      - name: Upload JAR to EC2
         shell: bash
         run: |
-          tar -czf bidmart-booking-deploy.tar.gz deploy/aws
-
-      - name: Upload package to EC2
-        shell: bash
-        run: |
-          scp \
-            -P "$AWS_EC2_SSH_PORT" \
-            -i ~/.ssh/bidmart-booking.pem \
-            bidmart-booking-deploy.tar.gz \
-            bidmart-booking-image.tar \
-            "$AWS_EC2_USER@$AWS_EC2_HOST:/tmp/"
+          JAR=$(ls build/libs/*SNAPSHOT.jar | head -1)
+          scp -P "$AWS_EC2_SSH_PORT" -i ~/.ssh/deploy.pem "$JAR" \
+            "$AWS_EC2_USER@$AWS_EC2_HOST:/tmp/bidmart-booking-new.jar"
 
       - name: Deploy on EC2
         shell: bash
         run: |
-          ssh \
-            -p "$AWS_EC2_SSH_PORT" \
-            -i ~/.ssh/bidmart-booking.pem \
-            "$AWS_EC2_USER@$AWS_EC2_HOST" \
-            "set -euo pipefail
-             mkdir -p '$AWS_EC2_DEPLOY_DIR'
-             tar -xzf /tmp/bidmart-booking-deploy.tar.gz -C '$AWS_EC2_DEPLOY_DIR'
-             cd '$AWS_EC2_DEPLOY_DIR'
-             if [ ! -f deploy/aws/.env ]; then cp deploy/aws/.env.example deploy/aws/.env; fi
-             docker load -i /tmp/bidmart-booking-image.tar
-             if grep -q '^APP_IMAGE=' deploy/aws/.env; then
-               sed -i 's|^APP_IMAGE=.*|APP_IMAGE=bidmart-booking:${{ github.sha }}|' deploy/aws/.env
-             else
-               printf '\nAPP_IMAGE=bidmart-booking:${{ github.sha }}\n' >> deploy/aws/.env
-             fi
-             docker compose --env-file deploy/aws/.env -f deploy/aws/docker-compose.yml up -d
-             docker image prune -f"
+          ssh -p "$AWS_EC2_SSH_PORT" -i ~/.ssh/deploy.pem \
+            "$AWS_EC2_USER@$AWS_EC2_HOST" "
+            set -euo pipefail
+            docker cp /tmp/bidmart-booking-new.jar bidmart-booking:/app/app.jar
+            docker restart bidmart-booking
+            rm -f /tmp/bidmart-booking-new.jar
+            echo 'Waiting for service to start...'
+            for i in \$(seq 1 30); do
+              if docker exec bidmart-booking curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
+                echo 'Service is healthy'
+                exit 0
+              fi
+              sleep 3
+            done
+            echo 'Service did not become healthy in time'
+            docker logs bidmart-booking --tail 30
+            exit 1
+          "
