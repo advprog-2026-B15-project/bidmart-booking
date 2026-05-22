@@ -2,6 +2,7 @@ package com.example.bidmartbooking.booking.event;
 
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.BookingStatus;
+import com.example.bidmartbooking.booking.repository.BookingRepository;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
@@ -33,6 +34,9 @@ class BookingEventConsumerTest {
     private BookingService bookingService;
 
     @Mock
+    private BookingRepository bookingRepository;
+
+    @Mock
     private NotificationService notificationService;
 
     @Mock
@@ -47,6 +51,7 @@ class BookingEventConsumerTest {
     void setUp() {
         bookingEventConsumer = new BookingEventConsumer(
                 bookingService,
+                bookingRepository,
                 notificationService,
                 processedEventService,
                 reliableEventProcessor
