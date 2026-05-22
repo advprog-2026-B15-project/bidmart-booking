@@ -71,7 +71,7 @@ jobs:
             rm -f /tmp/bidmart-booking-new.jar
             echo 'Waiting for service to start...'
             for i in \$(seq 1 30); do
-              if docker exec bidmart-booking curl -sf http://localhost:8085/actuator/health > /dev/null 2>&1; then
+              if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
                 echo 'Service is healthy'
                 exit 0
               fi
