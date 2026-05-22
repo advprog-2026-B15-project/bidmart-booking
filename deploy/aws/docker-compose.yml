@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bidmart_booking}
+      POSTGRES_USER: ${DB_USERNAME:-bidmart_booking}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - bidmart_booking_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-bidmart_booking} -d ${POSTGRES_DB:-bidmart_booking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: ../..
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8085
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-bidmart_booking}
+      DB_USERNAME: ${DB_USERNAME:-bidmart_booking}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      APP_SEED_DUMMY_DATA: ${APP_SEED_DUMMY_DATA:-false}
+      DEV_ENDPOINTS_ENABLED: ${DEV_ENDPOINTS_ENABLED:-false}
+    ports:
+      - "${APP_PORT:-8085}:8085"
+
+volumes:
+  bidmart_booking_pgdata:

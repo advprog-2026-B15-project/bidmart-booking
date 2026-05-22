@@ -1,0 +1,91 @@
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches: ["main", "staging"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-ec2-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build, test, and deploy
+    runs-on: ubuntu-latest
+    env:
+      AWS_EC2_HOST: ${{ secrets.AWS_EC2_HOST }}
+      AWS_EC2_USER: ${{ secrets.AWS_EC2_USER }}
+      AWS_EC2_SSH_KEY: ${{ secrets.AWS_EC2_SSH_KEY }}
+      AWS_EC2_SSH_PORT: ${{ secrets.AWS_EC2_SSH_PORT || '22' }}
+      AWS_EC2_DEPLOY_DIR: ${{ vars.AWS_EC2_DEPLOY_DIR || 'bidmart-booking' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run checks and coverage verification
+        run: ./gradlew clean check jacocoTestCoverageVerification
+
+      - name: Validate deployment secrets
+        shell: bash
+        run: |
+          test -n "$AWS_EC2_HOST" || { echo "Missing AWS_EC2_HOST secret"; exit 1; }
+          test -n "$AWS_EC2_USER" || { echo "Missing AWS_EC2_USER secret"; exit 1; }
+          test -n "$AWS_EC2_SSH_KEY" || { echo "Missing AWS_EC2_SSH_KEY secret"; exit 1; }
+
+      - name: Prepare SSH
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$AWS_EC2_SSH_KEY" > ~/.ssh/bidmart-booking.pem
+          chmod 600 ~/.ssh/bidmart-booking.pem
+          ssh-keyscan -p "$AWS_EC2_SSH_PORT" -H "$AWS_EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Package application
+        shell: bash
+        run: |
+          tar \
+            --exclude='.git' \
+            --exclude='.gradle' \
+            --exclude='build' \
+            --exclude='.claude' \
+            --exclude='bidmart-booking.tar.gz' \
+            --exclude='deploy/aws/.env' \
+            -czf bidmart-booking.tar.gz .
+
+      - name: Upload package to EC2
+        shell: bash
+        run: |
+          scp \
+            -P "$AWS_EC2_SSH_PORT" \
+            -i ~/.ssh/bidmart-booking.pem \
+            bidmart-booking.tar.gz \
+            "$AWS_EC2_USER@$AWS_EC2_HOST:/tmp/bidmart-booking.tar.gz"
+
+      - name: Deploy on EC2
+        shell: bash
+        run: |
+          ssh \
+            -p "$AWS_EC2_SSH_PORT" \
+            -i ~/.ssh/bidmart-booking.pem \
+            "$AWS_EC2_USER@$AWS_EC2_HOST" \
+            "set -euo pipefail
+             mkdir -p '$AWS_EC2_DEPLOY_DIR'
+             tar -xzf /tmp/bidmart-booking.tar.gz -C '$AWS_EC2_DEPLOY_DIR'
+             cd '$AWS_EC2_DEPLOY_DIR'
+             if [ ! -f deploy/aws/.env ]; then cp deploy/aws/.env.example deploy/aws/.env; fi
+             docker compose --env-file deploy/aws/.env -f deploy/aws/docker-compose.yml up -d --build
+             docker image prune -f"
