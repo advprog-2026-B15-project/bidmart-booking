@@ -1,4 +1,5 @@
 import org.gradle.api.plugins.quality.Checkstyle
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 
 plugins {
 	java
@@ -31,8 +32,10 @@ repositories {
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("io.micrometer:micrometer-registry-prometheus")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -49,6 +52,30 @@ dependencies {
 tasks.withType<Test> {
 	useJUnitPlatform()
 	finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.register<Test>("profileMilestone100") {
+	group = "verification"
+	description = "Runs milestone 100 integration profiling with Java Flight Recorder."
+	extensions.configure<JacocoTaskExtension> {
+		isEnabled = false
+	}
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching("*.AuctionToNotificationFlowIntegrationTest")
+		includeTestsMatching("*.NotificationStreamIntegrationTest")
+		includeTestsMatching("*.DisputeApiIntegrationTest")
+	}
+
+	val outputDir = layout.buildDirectory.dir("profiling")
+	doFirst {
+		outputDir.get().asFile.mkdirs()
+	}
+	jvmArgs(
+		"-XX:StartFlightRecording=filename=${outputDir.get().asFile}/milestone-100.jfr,"
+			+ "settings=profile,dumponexit=true",
+		"-XX:FlightRecorderOptions=stackdepth=128"
+	)
 }
 
 jacoco {
