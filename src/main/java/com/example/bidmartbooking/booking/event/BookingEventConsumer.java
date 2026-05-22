@@ -2,6 +2,7 @@ package com.example.bidmartbooking.booking.event;
 
 import com.example.bidmartbooking.booking.model.Booking;
 import com.example.bidmartbooking.booking.model.BookingStatus;
+import com.example.bidmartbooking.booking.repository.BookingRepository;
 import com.example.bidmartbooking.booking.service.BookingService;
 import com.example.bidmartbooking.booking.service.NotificationService;
 import com.example.bidmartbooking.booking.service.ProcessedEventService;
@@ -20,17 +21,20 @@ public class BookingEventConsumer {
     private static final String BALANCE_RELEASED = "BalanceReleased";
 
     private final BookingService bookingService;
+    private final BookingRepository bookingRepository;
     private final NotificationService notificationService;
     private final ProcessedEventService processedEventService;
     private final ReliableEventProcessor reliableEventProcessor;
 
     public BookingEventConsumer(
             BookingService bookingService,
+            BookingRepository bookingRepository,
             NotificationService notificationService,
             ProcessedEventService processedEventService,
             ReliableEventProcessor reliableEventProcessor
     ) {
         this.bookingService = bookingService;
+        this.bookingRepository = bookingRepository;
         this.notificationService = notificationService;
         this.processedEventService = processedEventService;
         this.reliableEventProcessor = reliableEventProcessor;
@@ -124,6 +128,11 @@ public class BookingEventConsumer {
                 bookingService.transitionBookingStatus(
                         Long.parseLong(payload.getBookingId()), BookingStatus.PAID
                 );
+            } else if (payload.getAuctionId() != null && !payload.getAuctionId().isBlank()) {
+                bookingRepository.findByAuctionId(payload.getAuctionId())
+                        .ifPresent(b -> bookingService.transitionBookingStatus(
+                                b.getId(), BookingStatus.PAID
+                        ));
             }
             processedEventService.markProcessed(event.getEventId(), BALANCE_CONVERTED);
             return null;

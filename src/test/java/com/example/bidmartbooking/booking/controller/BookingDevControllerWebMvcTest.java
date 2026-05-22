@@ -111,8 +111,11 @@ class BookingDevControllerWebMvcTest {
             NotificationService notificationService = mock(NotificationService.class);
             ProcessedEventService processedEventService = mock(ProcessedEventService.class);
             ReliableEventProcessor reliableEventProcessor = mock(ReliableEventProcessor.class);
+            com.example.bidmartbooking.booking.repository.BookingRepository bookingRepository =
+                    mock(com.example.bidmartbooking.booking.repository.BookingRepository.class);
             return org.mockito.Mockito.spy(new BookingEventConsumer(
                     bookingService,
+                    bookingRepository,
                     notificationService,
                     processedEventService,
                     reliableEventProcessor
