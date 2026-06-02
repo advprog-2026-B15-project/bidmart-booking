@@ -148,6 +148,14 @@ public class BookingService {
                         HttpStatus.NOT_FOUND, "Shipment not found"
                 ));
 
+        if (booking.getStatus() != BookingStatus.PAID
+                && booking.getStatus() != BookingStatus.SHIPPED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Cannot update shipment before booking is paid"
+            );
+        }
+
         ShipmentStatus currentStatus = shipment.getStatus();
         if (currentStatus == null || !currentStatus.canTransitionTo(nextStatus)) {
             throw new ResponseStatusException(
