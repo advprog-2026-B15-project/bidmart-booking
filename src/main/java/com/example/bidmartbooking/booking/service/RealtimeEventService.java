@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -35,6 +36,19 @@ public class RealtimeEventService {
         emitter.onError(throwable -> removeEmitter(userId, emitter));
         send(userId, "connected", "connected");
         return emitter;
+    }
+
+    @Scheduled(fixedRateString = "${realtime.sse.heartbeat-ms:25000}")
+    public void sendHeartbeat() {
+        emittersByUserId.forEach((userId, emitters) -> {
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event().name("heartbeat").data("ping"));
+                } catch (IOException | IllegalStateException exception) {
+                    removeEmitter(userId, emitter);
+                }
+            }
+        });
     }
 
     public void publishNotification(Notification notification) {
