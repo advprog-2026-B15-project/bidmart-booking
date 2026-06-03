@@ -55,6 +55,7 @@ public class BookingService {
     @Transactional(readOnly = true)
     public Booking getBookingByIdForUser(Long id, String userId) {
         return bookingRepository.findByIdAndBuyerUserId(id, userId)
+                .or(() -> bookingRepository.findByIdAndSellerUserId(id, userId))
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Booking not found"
                 ));

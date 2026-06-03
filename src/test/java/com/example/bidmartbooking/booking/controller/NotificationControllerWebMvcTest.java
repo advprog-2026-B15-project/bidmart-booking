@@ -99,6 +99,26 @@ class NotificationControllerWebMvcTest {
     }
 
     @Test
+    void shouldMarkNotificationAsReadWithoutRequestBody() throws Exception {
+        Notification notification = new Notification();
+        notification.setId(4L);
+        notification.setType(NotificationType.INFO);
+        notification.setTitle("Info");
+        notification.setMessage("Message");
+        notification.setIsRead(true);
+        notification.setReadAt(OffsetDateTime.now(ZoneOffset.UTC));
+        notification.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+
+        when(notificationService.markNotificationAsRead(4L, "usr-1")).thenReturn(notification);
+
+        mockMvc.perform(patch("/api/notifications/4/read")
+                        .header("X-User-Id", "usr-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(4))
+                .andExpect(jsonPath("$.isRead").value(true));
+    }
+
+    @Test
     void shouldGetMyNotificationPreference() throws Exception {
         NotificationPreference preference = new NotificationPreference();
         preference.setUserId("usr-1");

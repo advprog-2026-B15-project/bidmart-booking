@@ -78,6 +78,16 @@ class NotificationApiIntegrationTest {
     }
 
     @Test
+    void shouldMarkNotificationAsReadWithoutRequestBody() throws Exception {
+        Notification notification = createNotification("usr-a", NotificationType.WIN, false, null);
+
+        mockMvc.perform(patch("/api/notifications/{id}/read", notification.getId())
+                        .header("X-User-Id", "usr-a"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isRead").value(true));
+    }
+
+    @Test
     void shouldRejectMarkReadWhenReadFalse() throws Exception {
         Notification notification = createNotification("usr-a", NotificationType.WIN, false, null);
 

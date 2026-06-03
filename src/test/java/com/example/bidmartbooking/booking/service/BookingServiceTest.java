@@ -102,8 +102,24 @@ class BookingServiceTest {
     }
 
     @Test
+    void shouldReturnBookingByIdForSeller() {
+        Booking booking = new Booking();
+        booking.setId(13L);
+        when(bookingRepository.findByIdAndBuyerUserId(13L, "seller-13"))
+                .thenReturn(Optional.empty());
+        when(bookingRepository.findByIdAndSellerUserId(13L, "seller-13"))
+                .thenReturn(Optional.of(booking));
+
+        Booking result = bookingService.getBookingByIdForUser(13L, "seller-13");
+
+        assertEquals(13L, result.getId());
+    }
+
+    @Test
     void shouldThrowWhenBookingNotFoundForUser() {
         when(bookingRepository.findByIdAndBuyerUserId(9L, "usr-404"))
+                .thenReturn(Optional.empty());
+        when(bookingRepository.findByIdAndSellerUserId(9L, "usr-404"))
                 .thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(

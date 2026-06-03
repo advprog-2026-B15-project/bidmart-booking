@@ -96,9 +96,9 @@ public class NotificationController {
             @PathVariable Long id,
             @Parameter(description = "Current user id", required = true)
             @RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody MarkNotificationReadRequest request
+            @Valid @RequestBody(required = false) MarkNotificationReadRequest request
     ) {
-        if (!Boolean.TRUE.equals(request.getRead())) {
+        if (request != null && !Boolean.TRUE.equals(request.getRead())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "read must be true"
