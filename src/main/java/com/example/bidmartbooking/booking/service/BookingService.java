@@ -277,7 +277,7 @@ public class BookingService {
                         HttpStatus.NOT_FOUND, "Booking not found"
                 ));
 
-        if (booking.getStatus() != BookingStatus.DELIVERED) {
+        if (booking.getStatus() != BookingStatus.SHIPPED) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Booking is not ready for delivery confirmation"
