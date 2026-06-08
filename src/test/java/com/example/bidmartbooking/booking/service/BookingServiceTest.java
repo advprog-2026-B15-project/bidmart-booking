@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,30 +132,32 @@ class BookingServiceTest {
     }
 
     @Test
-    void shouldThrowConflictWhenEventAlreadyProcessed() {
-        when(bookingRepository.existsBySourceEventId("evt-1")).thenReturn(true);
+    void shouldReturnExistingBookingWhenEventAlreadyProcessed() {
+        Booking existing = new Booking();
+        existing.setId(99L);
+        existing.setAuctionId("auc-1");
+        when(bookingRepository.findBySourceEventId("evt-1")).thenReturn(Optional.of(existing));
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> bookingService.createBookingFromWinnerEvent(
-                        "evt-1",
-                        "auc-1",
-                        "lst-1",
-                        "seller-1",
-                        "buyer-1",
-                        1000L,
-                        "IDR",
-                        "Item",
-                        1
-                )
+        Booking result = bookingService.createBookingFromWinnerEvent(
+                "evt-1",
+                "auc-1",
+                "lst-1",
+                "seller-1",
+                "buyer-1",
+                1000L,
+                "IDR",
+                "Item",
+                1
         );
 
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals(99L, result.getId());
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     @Test
     void shouldCreateBookingItemAndShipmentFromWinnerEvent() {
-        when(bookingRepository.existsBySourceEventId("evt-2")).thenReturn(false);
+        when(bookingRepository.findBySourceEventId("evt-2")).thenReturn(Optional.empty());
+        when(bookingRepository.findByAuctionId("auc-2")).thenReturn(Optional.empty());
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking b = invocation.getArgument(0);
             b.setId(100L);
@@ -209,7 +212,8 @@ class BookingServiceTest {
 
     @Test
     void shouldUseFallbackItemNameAndQuantity() {
-        when(bookingRepository.existsBySourceEventId("evt-3")).thenReturn(false);
+        when(bookingRepository.findBySourceEventId("evt-3")).thenReturn(Optional.empty());
+        when(bookingRepository.findByAuctionId("auc-3")).thenReturn(Optional.empty());
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking b = invocation.getArgument(0);
             b.setId(200L);
@@ -238,7 +242,8 @@ class BookingServiceTest {
 
     @Test
     void shouldUseFallbackWhenItemNameNullAndQuantityZero() {
-        when(bookingRepository.existsBySourceEventId("evt-4")).thenReturn(false);
+        when(bookingRepository.findBySourceEventId("evt-4")).thenReturn(Optional.empty());
+        when(bookingRepository.findByAuctionId("auc-4")).thenReturn(Optional.empty());
         when(bookingRepository.save(any(Booking.class))).thenAnswer(invocation -> {
             Booking b = invocation.getArgument(0);
             b.setId(400L);
@@ -263,6 +268,30 @@ class BookingServiceTest {
 
         assertEquals("Auction Item", item.getItemName());
         assertEquals(1, item.getQuantity());
+    }
+
+    @Test
+    void shouldReturnExistingBookingWhenAuctionAlreadyHasBooking() {
+        Booking existing = new Booking();
+        existing.setId(77L);
+        existing.setAuctionId("auc-7");
+        when(bookingRepository.findBySourceEventId("evt-7")).thenReturn(Optional.empty());
+        when(bookingRepository.findByAuctionId("auc-7")).thenReturn(Optional.of(existing));
+
+        Booking result = bookingService.createBookingFromWinnerEvent(
+                "evt-7",
+                "auc-7",
+                "lst-7",
+                "seller-7",
+                "buyer-7",
+                7000L,
+                "IDR",
+                "Mouse",
+                1
+        );
+
+        assertEquals(77L, result.getId());
+        verify(bookingRepository, never()).save(any(Booking.class));
     }
 
     @Test

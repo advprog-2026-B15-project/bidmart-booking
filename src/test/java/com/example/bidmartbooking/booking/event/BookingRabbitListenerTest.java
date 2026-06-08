@@ -3,9 +3,12 @@ package com.example.bidmartbooking.booking.event;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -37,14 +40,14 @@ class BookingRabbitListenerTest {
                 + "\"finalPrice\":100000,\"currency\":\"IDR\","
                 + "\"itemName\":\"Item\",\"quantity\":1,\"loserUserIds\":[]}}";
 
-        listener.onWinnerDetermined(json);
+        listener.onWinnerDetermined(message(json));
 
         verify(consumer).handleWinnerDetermined(any());
     }
 
     @Test
     void onWinnerDetermined_invalidJson_logsErrorWithoutThrowing() {
-        listener.onWinnerDetermined("not-valid-json");
+        listener.onWinnerDetermined(message("not-valid-json"));
 
         verify(consumer, never()).handleWinnerDetermined(any());
     }
@@ -55,14 +58,14 @@ class BookingRabbitListenerTest {
                 + "\"payload\":{\"auctionId\":\"a1\",\"listingId\":\"l1\","
                 + "\"hasWinner\":false,\"closedAt\":\"2026-05-22T10:00:00Z\"}}";
 
-        listener.onAuctionClosed(json);
+        listener.onAuctionClosed(message(json));
 
         verify(consumer).handleAuctionClosed(any());
     }
 
     @Test
     void onAuctionClosed_invalidJson_logsErrorWithoutThrowing() {
-        listener.onAuctionClosed("{bad}");
+        listener.onAuctionClosed(message("{bad}"));
 
         verify(consumer, never()).handleAuctionClosed(any());
     }
@@ -74,51 +77,55 @@ class BookingRabbitListenerTest {
                 + "\"sellerUserId\":\"s1\",\"bidderUserId\":\"b1\","
                 + "\"bidAmount\":50000,\"itemName\":\"Item\"}}";
 
-        listener.onBidPlaced(json);
+        listener.onBidPlaced(message(json));
 
         verify(consumer).handleBidPlaced(any());
     }
 
     @Test
     void onBidPlaced_invalidJson_logsErrorWithoutThrowing() {
-        listener.onBidPlaced(null);
+        listener.onBidPlaced(message("{bad}"));
 
         verify(consumer, never()).handleBidPlaced(any());
     }
 
     @Test
-    void onBalanceConverted_validMessage_callsConsumer() throws Exception {
-        String json = "{\"eventId\":\"evt-4\",\"eventType\":\"BalanceConverted\","
-                + "\"payload\":{\"userId\":\"u1\",\"auctionId\":\"a1\","
-                + "\"bookingId\":\"1\",\"amount\":100000,\"currency\":\"IDR\"}}";
+    void onBalanceConverted_rawWalletMessage_callsConsumer() throws Exception {
+        String json = "{\"userId\":\"u1\",\"auctionId\":\"a1\","
+                + "\"bookingId\":\"1\",\"amount\":100000,\"currency\":\"IDR\"}";
 
-        listener.onBalanceConverted(json);
+        listener.onBalanceConverted(message(json));
 
         verify(consumer).handleBalanceConverted(any());
     }
 
     @Test
     void onBalanceConverted_invalidJson_logsErrorWithoutThrowing() {
-        listener.onBalanceConverted("not-json");
+        listener.onBalanceConverted(message("not-json"));
 
         verify(consumer, never()).handleBalanceConverted(any());
     }
 
     @Test
-    void onBalanceReleased_validMessage_callsConsumer() throws Exception {
-        String json = "{\"eventId\":\"evt-5\",\"eventType\":\"BalanceReleased\","
-                + "\"payload\":{\"userId\":\"u1\",\"auctionId\":\"a1\","
-                + "\"bookingId\":\"1\",\"amount\":100000,\"currency\":\"IDR\"}}";
+    void onBalanceReleased_rawWalletMessage_callsConsumer() throws Exception {
+        String json = "{\"userId\":\"u1\",\"auctionId\":\"a1\","
+                + "\"bookingId\":\"1\",\"amount\":100000,\"currency\":\"IDR\"}";
 
-        listener.onBalanceReleased(json);
+        listener.onBalanceReleased(message(json));
 
         verify(consumer).handleBalanceReleased(any());
     }
 
     @Test
     void onBalanceReleased_invalidJson_logsErrorWithoutThrowing() {
-        listener.onBalanceReleased("not-json");
+        listener.onBalanceReleased(message("not-json"));
 
         verify(consumer, never()).handleBalanceReleased(any());
+    }
+
+    private Message message(String body) {
+        MessageProperties properties = new MessageProperties();
+        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        return new Message(body.getBytes(StandardCharsets.UTF_8), properties);
     }
 }
