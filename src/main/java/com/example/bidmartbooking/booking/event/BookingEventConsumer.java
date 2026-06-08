@@ -43,7 +43,7 @@ public class BookingEventConsumer {
     public Booking handleWinnerDetermined(EventEnvelope<WinnerDeterminedPayload> event) {
         validateWinnerEvent(event);
         if (hasAlreadyProcessed(event)) {
-            return bookingRepository.findBySourceEventId(event.getEventId()).orElse(null);
+            return null;
         }
 
         return reliableEventProcessor.process(event, WINNER_DETERMINED, () -> {
