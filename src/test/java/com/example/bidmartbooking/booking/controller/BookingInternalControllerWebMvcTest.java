@@ -103,5 +103,10 @@ class BookingInternalControllerWebMvcTest {
                     reliableEventProcessor
             ));
         }
+
+        @Bean
+        BookingService bookingService() {
+            return mock(BookingService.class);
+        }
     }
 }
