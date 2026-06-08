@@ -197,6 +197,25 @@ public class BookingController {
         return response;
     }
 
+    @PatchMapping("/{id}/complete")
+    @Operation(summary = "Complete order as buyer (DELIVERED -> COMPLETED)")
+    public DeliveryConfirmationResponse completeOrder(
+            @Parameter(description = "Booking id", required = true)
+            @PathVariable Long id,
+            @Parameter(description = "Current user id", required = true)
+            @RequestHeader("X-User-Id") String userId,
+            @Parameter(description = "Current user role, must be BUYER", required = true)
+            @RequestHeader("X-User-Role") String userRole
+    ) {
+        enforceRole(userRole, "BUYER");
+        Booking booking = bookingService.completeOrderForBuyer(id, userId);
+
+        DeliveryConfirmationResponse response = new DeliveryConfirmationResponse();
+        response.setBookingId(booking.getId());
+        response.setStatus(booking.getStatus());
+        return response;
+    }
+
     private BookingSummaryResponse toBookingSummaryResponse(Booking booking) {
         BookingSummaryResponse response = new BookingSummaryResponse();
         response.setId(booking.getId());

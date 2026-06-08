@@ -285,6 +285,35 @@ public class BookingService {
         }
 
         BookingStatus currentStatus = booking.getStatus();
+        booking.setStatus(BookingStatus.DELIVERED);
+        applyLifecycleTimestamps(booking, BookingStatus.DELIVERED);
+        Booking savedBooking = bookingRepository.save(booking);
+        recordAndPublishStatusChange(
+                savedBooking,
+                currentStatus,
+                BookingStatus.DELIVERED,
+                buyerUserId,
+                "BUYER",
+                "BUYER_CONFIRMED_DELIVERY"
+        );
+        return savedBooking;
+    }
+
+    @Transactional
+    public Booking completeOrderForBuyer(Long bookingId, String buyerUserId) {
+        Booking booking = bookingRepository.findByIdAndBuyerUserId(bookingId, buyerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        if (booking.getStatus() != BookingStatus.DELIVERED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Booking must be in DELIVERED status to complete"
+            );
+        }
+
+        BookingStatus currentStatus = booking.getStatus();
         booking.setStatus(BookingStatus.COMPLETED);
         applyLifecycleTimestamps(booking, BookingStatus.COMPLETED);
         Booking savedBooking = bookingRepository.save(booking);
@@ -294,7 +323,7 @@ public class BookingService {
                 BookingStatus.COMPLETED,
                 buyerUserId,
                 "BUYER",
-                "BUYER_CONFIRMED_DELIVERY"
+                "BUYER_COMPLETED_ORDER"
         );
         return savedBooking;
     }
