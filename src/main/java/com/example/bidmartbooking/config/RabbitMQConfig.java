@@ -11,13 +11,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    public static final String EXCHANGE_AUCTION_EVENTS = "auction.events";
-    public static final String EXCHANGE_WALLET_EVENTS = "wallet.events";
+    public static final String EXCHANGE_AUCTION_EVENTS = "bidmart.auction.exchange";
+    public static final String EXCHANGE_WALLET_EVENTS = "wallet.events.exchange";
 
     public static final String RK_WINNER_DETERMINED = "auction.event.winner-determined";
     public static final String RK_AUCTION_CLOSED = "auction.event.auction-closed";
     public static final String RK_BID_PLACED = "auction.event.bid-placed";
-    public static final String RK_BALANCE_CONVERTED = "wallet.event.balance-converted";
+    public static final String RK_BALANCE_CONVERTED = "wallet.event.payment-completed";
     public static final String RK_BALANCE_RELEASED = "wallet.event.balance-released";
 
     public static final String QUEUE_WINNER_DETERMINED = "booking.winner-determined";

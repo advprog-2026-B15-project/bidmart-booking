@@ -73,8 +73,14 @@ public class BookingService {
             String itemName,
             Integer quantity
     ) {
-        if (bookingRepository.existsBySourceEventId(eventId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Event already processed");
+        Booking existingByEvent = bookingRepository.findBySourceEventId(eventId).orElse(null);
+        if (existingByEvent != null) {
+            return existingByEvent;
+        }
+
+        Booking existingByAuction = bookingRepository.findByAuctionId(auctionId).orElse(null);
+        if (existingByAuction != null) {
+            return existingByAuction;
         }
 
         Booking booking = new Booking();
@@ -99,6 +105,61 @@ public class BookingService {
                 "BOOKING_CREATED_FROM_WINNER_EVENT"
         );
 
+        return savedBooking;
+    }
+
+    @Transactional
+    public Booking payBookingByAuctionId(String auctionId) {
+        Booking booking = bookingRepository.findByAuctionId(auctionId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found for auction " + auctionId
+                ));
+
+        if (booking.getStatus() != BookingStatus.CREATED) {
+            return booking;
+        }
+
+        BookingStatus previousStatus = booking.getStatus();
+        booking.setStatus(BookingStatus.PAID);
+        applyLifecycleTimestamps(booking, BookingStatus.PAID);
+        Booking savedBooking = bookingRepository.save(booking);
+        recordAndPublishStatusChange(
+                savedBooking,
+                previousStatus,
+                BookingStatus.PAID,
+                "system",
+                "SYSTEM",
+                "BOOKING_PAID_VIA_REST"
+        );
+        return savedBooking;
+    }
+
+    @Transactional
+    public Booking payBooking(Long bookingId, String buyerUserId) {
+        Booking booking = bookingRepository.findByIdAndBuyerUserId(bookingId, buyerUserId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Booking not found"
+                ));
+
+        if (booking.getStatus() != BookingStatus.CREATED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Booking cannot be paid in current status"
+            );
+        }
+
+        BookingStatus previousStatus = booking.getStatus();
+        booking.setStatus(BookingStatus.PAID);
+        applyLifecycleTimestamps(booking, BookingStatus.PAID);
+        Booking savedBooking = bookingRepository.save(booking);
+        recordAndPublishStatusChange(
+                savedBooking,
+                previousStatus,
+                BookingStatus.PAID,
+                buyerUserId,
+                "BUYER",
+                "BOOKING_PAID"
+        );
         return savedBooking;
     }
 

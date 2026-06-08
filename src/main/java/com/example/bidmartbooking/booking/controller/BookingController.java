@@ -107,6 +107,21 @@ public class BookingController {
         return response;
     }
 
+    @PatchMapping("/{id}/pay")
+    @Operation(summary = "Pay for a booking as buyer")
+    public BookingSummaryResponse payBooking(
+            @Parameter(description = "Booking id", required = true)
+            @PathVariable Long id,
+            @Parameter(description = "Current user id", required = true)
+            @RequestHeader("X-User-Id") String userId,
+            @Parameter(description = "Current user role, must be BUYER", required = true)
+            @RequestHeader("X-User-Role") String userRole
+    ) {
+        enforceRole(userRole, "BUYER");
+        Booking booking = bookingService.payBooking(id, userId);
+        return toBookingSummaryResponse(booking);
+    }
+
     @PatchMapping("/{id}/shipment")
     @Operation(summary = "Update shipment status as seller")
     public ShipmentUpdateResponse updateShipment(
